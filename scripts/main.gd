@@ -28,6 +28,8 @@ const ENT_STYLE := {
 	"safe": ["箱", Color("#5b6470")],
 	"cache": ["格", Color("#3a2e28")],
 	"tin": ["烟", Color("#a0763a")],
+	"jar": ["罐", Color("#9a6b3c")],
+	"ashtray": ["缸", Color("#4a4a52")],
 }
 
 var game = GameLogic.new()
@@ -47,7 +49,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
 	var k: int = event.keycode
-	if event.echo and k in [KEY_SHIFT, KEY_R, KEY_Z, KEY_BACKSPACE]:
+	if event.echo and k in [KEY_SHIFT, KEY_Z, KEY_BACKSPACE]:
 		return
 	match k:
 		KEY_UP, KEY_W:
@@ -60,8 +62,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			game.move(Vector2i.RIGHT)
 		KEY_SHIFT:
 			game.puff()
-		KEY_R:
-			game.refill()
 		KEY_Z:
 			game.undo()
 		KEY_BACKSPACE:
@@ -147,7 +147,7 @@ func _draw_ent(e: Dictionary) -> void:
 	var col: Color = st[1]
 	if e.era == "past":
 		col = col.lerp(Color("#a07848"), 0.45)
-	if e.kind == "cache" and e.get("open", false):
+	if (e.kind == "cache" and e.get("open", false)) or (e.kind == "ashtray" and e.used):
 		col = col.darkened(0.4)
 	if e.kind in ["inspector", "maid", "butler"]:
 		draw_circle(r.get_center(), r.size.x * 0.5, col)
@@ -168,7 +168,7 @@ func _draw_player() -> void:
 	draw_arc(r.get_center(), r.size.x * 0.5, 0, TAU, 32, C_ACCENT, 2.0)
 	_text_center("探", r.get_center() + Vector2(0, 1), 22, C_TEXT)
 	# 烟斗冒的小烟
-	if s.bowl > 0:
+	if s.tobacco > 0:
 		for i in 3:
 			var k := fposmod(t * 0.8 + i * 0.33, 1.0)
 			var p := r.position + Vector2(r.size.x - 2 + sin(t * 3 + i) * 3, -k * 18)
@@ -178,27 +178,32 @@ func _draw_player() -> void:
 func _draw_hud() -> void:
 	var s: Dictionary = game.s
 	var y := 26.0
-	_text("烟斗", Vector2(48, y), 16, C_DIM)
-	for i in Game.BOWL_CAP:
-		var filled: bool = i < s.bowl
-		var cpos := Vector2(98 + i * 20, y - 6)
-		if filled:
-			draw_circle(cpos, 7, C_ACCENT)
+	_text("烟丝", Vector2(48, y), 16, C_DIM)
+	for i in maxi(s.tobacco, 1):
+		var cpos := Vector2(98 + i * 18, y - 6)
+		if i < s.tobacco:
+			draw_circle(cpos, 6, C_ACCENT)
 		else:
-			draw_arc(cpos, 7, 0, TAU, 20, C_DIM, 1.5)
-	_text("烟丝袋 ×%d" % s.pouch, Vector2(170, y), 16, C_TEXT)
-	_text("已用 %d 口（标准 %d）" % [s.puffs, Game.PAR], Vector2(270, y), 16, C_TEXT)
-	var clue_txt := "证据 %d/3" % s.clues.size()
+			draw_arc(cpos, 6, 0, TAU, 20, C_DIM, 1.5)
+	var after := 98.0 + maxi(s.tobacco, 1) * 18 + 8
+	_text("×%d" % s.tobacco, Vector2(after, y), 16, C_TEXT)
+	_text("烟灰 ×%d" % s.ash, Vector2(after + 50, y), 16, C_TEXT)
+	var x := 420.0
+	for cat in Game.CATEGORIES:
+		var ok: bool = game.has_category(cat)
+		var label: String = Game.CATEGORIES[cat][0]
+		_text(("✓ " if ok else "□ ") + label, Vector2(x, y), 16, C_ACCENT if ok else C_DIM)
+		x += 80
+	var clue_txt := ""
 	for c in s.clues:
-		clue_txt += " · " + Game.CLUE_NAMES[c]
-	_text(clue_txt, Vector2(470, y), 16, C_ACCENT)
-	if not s.inv.is_empty():
-		var inv_txt := "物品："
-		for it in s.inv:
-			inv_txt += Game.ITEM_NAMES[it] + " "
-		_text(inv_txt, Vector2(48, y + 26), 14, C_DIM)
+		clue_txt += Game.CLUE_NAMES[c] + "  "
+	var inv_txt := ""
+	for it in s.inv:
+		inv_txt += Game.ITEM_NAMES[it] + "  "
+	var line2 := ("证据：" + clue_txt if clue_txt != "" else "") + ("物品：" + inv_txt if inv_txt != "" else "")
+	_text(line2, Vector2(48, y + 26), 14, C_DIM)
 	var era_txt := "烟雾里：案发当晚 22:50" if s.cloud else "现在：次日清晨 9:00"
-	_text(era_txt, Vector2(700, y + 26), 14, C_ACCENT if s.cloud else C_DIM)
+	_text(era_txt, Vector2(730, y + 26), 14, C_ACCENT if s.cloud else C_DIM)
 
 
 func _draw_message() -> void:
@@ -207,7 +212,7 @@ func _draw_message() -> void:
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in lines.size():
 		_text(lines[i], Vector2(48, y + i * 20), 15, C_TEXT)
-	_text("方向键/WASD 移动（撞上去即互动）  Shift 吐烟  R 装填  Z 撤销  Backspace 重来",
+	_text("方向键/WASD 移动（撞上去即互动）  Shift 吐烟（花 1 撮烟丝）  1/2 选择  Esc 取消  Z 撤销  Backspace 重来",
 		Vector2(48, 628), 13, C_DIM)
 
 
@@ -217,12 +222,22 @@ func _draw_end() -> void:
 	draw_rect(Rect2(Vector2.ZERO, vp), Color(0, 0, 0, 0.7))
 	if s.outcome == "win":
 		_text_center("结案", vp / 2 - Vector2(0, 60), 40, C_ACCENT)
-		var stars := "★".repeat(game.rating()) + "☆".repeat(3 - game.rating())
-		_text_center(stars, vp / 2, 36, C_ACCENT)
-		_text_center("用了 %d 口烟（标准 %d 口）" % [s.puffs, Game.PAR], vp / 2 + Vector2(0, 44), 18, C_TEXT)
+		var used: Array = []
+		for c in s.clues:
+			used.append(Game.CLUE_NAMES[c])
+		_text_center("你找到的证据：" + "、".join(used), vp / 2 + Vector2(0, 0), 18, C_TEXT)
+		_text_center("在场证据一共有三条路，你走了其中 %d 条。" % _presence_count(), vp / 2 + Vector2(0, 32), 16, C_DIM)
 	else:
 		_text_center("指认失败", vp / 2 - Vector2(0, 30), 40, Color("#c9533b"))
 	_text_center("按 Backspace 再玩一次", vp / 2 + Vector2(0, 90), 16, C_DIM)
+
+
+func _presence_count() -> int:
+	var n := 0
+	for c in Game.CATEGORIES["presence"][1]:
+		if game.s.clues.has(c):
+			n += 1
+	return n
 
 
 func _text(str: String, pos: Vector2, size: int, col: Color) -> void:

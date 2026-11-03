@@ -2,17 +2,19 @@ class_name Game
 extends RefCounted
 ## 纯逻辑：不依赖场景节点，方便无界面测试。
 ## 规则摘要：
-##  - Shift 吐一口烟：以侦探为中心的 3x3 格子变成"过去"（案发当晚）。
+##  - Shift 吐一口烟（花 1 撮烟丝）：以侦探为中心的 3x3 格子变成"过去"（案发当晚）。
 ##  - 烟雾停在原地；在烟里走动、互动都不散，走出烟雾或浓度耗尽才复原。
-##  - 每个行动（移动、碰撞互动、装填）消耗 1 点烟雾浓度。
+##  - 每个行动（移动、碰撞互动）消耗 1 点烟雾浓度。
 ##  - 在过去做的改动会保留到现在；物品可以随意跨时代携带。
-##  - 烟斗容量 3 口；R 用 1 撮烟丝重新装满烟斗。
+## 烟丝资源：
+##  - 获取：现在的烟灰缸、密室里的烟丝罐、过去老爷的烟丝罐（拿走后现在那罐也消失，罐上的指纹随之消失）。
+##  - 消耗：吐烟开窗；或者送给过去的人，改变他们当晚的行动，现在的证词随之改变。
+##  - 副产品：每吐一口烟得到 1 份烟灰，撒在物体上可以显出指纹。
 
 const W := 18
 const H := 10
-const BOWL_CAP := 3
 const SMOKE_TURNS := 8
-const PAR := 4
+const START_TOBACCO := 2
 const START := Vector2i(2, 7)
 
 enum Tile { FLOOR, WALL, BRICK }
@@ -45,7 +47,16 @@ const PAST_MAP := [
 	"##################",
 ]
 
-const CLUE_NAMES := {"lie": "证词矛盾", "knife": "凶器", "will": "遗嘱"}
+const CLUE_NAMES := {
+	"lie": "证词矛盾", "print": "罐上指纹", "witness": "女仆证词",
+	"knife": "凶器", "will": "遗嘱",
+}
+# 指认需要三类证据：在场、凶器、动机。"在场"有三条路可以拿到。
+const CATEGORIES := {
+	"presence": ["在场", ["lie", "print", "witness"]],
+	"weapon": ["凶器", ["knife"]],
+	"motive": ["动机", ["will"]],
+}
 const ITEM_NAMES := {"note": "密码纸条"}
 
 var s: Dictionary
@@ -59,17 +70,17 @@ func _init() -> void:
 func reset() -> void:
 	s = {
 		"pos": START,
-		"bowl": BOWL_CAP,
-		"pouch": 1,
-		"puffs": 0,
+		"tobacco": START_TOBACCO,
+		"ash": 0,
 		"cloud": false,
 		"center": Vector2i.ZERO,
 		"turns": 0,
 		"inv": [],
 		"clues": [],
 		"ents": _make_ents(),
-		"msg": "富商死在书房里。按 Shift 吐一口烟，看看案发当晚发生了什么。",
+		"msg": "富商死在书房里。按 Shift 吐一口烟，看看案发当晚发生了什么。烟丝不多，省着点用。",
 		"mode": "play",
+		"choice": "",
 		"outcome": "",
 	}
 	history.clear()
@@ -79,17 +90,21 @@ func _make_ents() -> Array:
 	# 列表靠后的实体画在上层，碰撞时也优先命中。
 	return [
 		{"id": "inspector", "kind": "inspector", "era": "present", "pos": Vector2i(2, 2)},
-		{"id": "maid", "kind": "maid", "era": "present", "pos": Vector2i(3, 7)},
+		{"id": "maid_now", "kind": "maid", "era": "present", "pos": Vector2i(3, 7)},
+		{"id": "maid_then", "kind": "maid", "era": "past", "pos": Vector2i(3, 3)},
 		{"id": "butler_now", "kind": "butler", "era": "present", "pos": Vector2i(6, 5)},
 		{"id": "butler_then", "kind": "butler", "era": "past", "pos": Vector2i(7, 2)},
+		{"id": "jar_now", "kind": "jar", "era": "present", "pos": Vector2i(6, 2)},
+		{"id": "jar_then", "kind": "jar", "era": "past", "pos": Vector2i(6, 2)},
 		{"id": "desk_now", "kind": "desk", "era": "present", "pos": Vector2i(8, 2)},
 		{"id": "desk_then", "kind": "desk", "era": "past", "pos": Vector2i(8, 2), "note": true},
+		{"id": "ashtray", "kind": "ashtray", "era": "present", "pos": Vector2i(11, 1), "used": false},
 		{"id": "cache", "kind": "cache", "era": "present", "pos": Vector2i(9, 7), "open": false},
 		{"id": "shelf_now", "kind": "shelf", "era": "present", "pos": Vector2i(9, 7)},
 		{"id": "shelf_then", "kind": "shelf", "era": "past", "pos": Vector2i(9, 7)},
 		{"id": "safe_now", "kind": "safe", "era": "present", "pos": Vector2i(15, 2), "open": false},
 		{"id": "safe_then", "kind": "safe", "era": "past", "pos": Vector2i(15, 2)},
-		{"id": "tin", "kind": "tin", "era": "present", "pos": Vector2i(15, 7), "gone": false},
+		{"id": "tin", "kind": "tin", "era": "present", "pos": Vector2i(15, 7)},
 	]
 
 
@@ -144,12 +159,18 @@ func visible_ents() -> Array:
 	return out
 
 
-func rating() -> int:
-	if s.puffs <= PAR:
-		return 3
-	if s.puffs <= PAR + 2:
-		return 2
-	return 1
+func has_category(cat: String) -> bool:
+	for c in CATEGORIES[cat][1]:
+		if s.clues.has(c):
+			return true
+	return false
+
+
+func all_categories() -> bool:
+	for cat in CATEGORIES:
+		if not has_category(cat):
+			return false
+	return true
 
 
 # ---------- 行动 ----------
@@ -178,58 +199,73 @@ func move(dir: Vector2i) -> void:
 func puff() -> void:
 	if s.mode != "play":
 		return
-	if s.bowl <= 0:
-		s.msg = "烟斗空了。按 R 用一撮烟丝装满。" if s.pouch > 0 else _stuck_msg()
+	if s.tobacco <= 0:
+		s.msg = _stuck_msg()
 		return
 	_snapshot()
-	s.bowl -= 1
-	s.puffs += 1
+	s.tobacco -= 1
+	s.ash += 1
 	s.cloud = true
 	s.center = s.pos
 	s.turns = SMOKE_TURNS
-	s.msg = "你吐出一口烟。烟雾里浮现出案发当晚的景象。"
+	s.msg = "你吐出一口烟，烟雾里浮现出案发当晚。（烟灰 +1）"
 
 
-func refill() -> void:
-	if s.mode != "play":
-		return
-	if s.pouch <= 0:
-		s.msg = "烟丝袋空了。"
-		return
-	if s.bowl >= BOWL_CAP:
-		s.msg = "烟斗还是满的。"
-		return
-	_snapshot()
-	s.pouch -= 1
-	s.bowl = BOWL_CAP
-	s.msg = "你压实烟丝，重新装满了烟斗。"
-	_after_action()
-
-
+## 选择框里按数字键。
 func choose(n: int) -> void:
-	if s.mode != "accuse":
+	if s.mode != "choice":
+		return
+	if s.choice != "accuse" and n != 1:
+		cancel()
 		return
 	_snapshot()
-	if n == 1:
-		s.mode = "end"
-		s.outcome = "win"
-		s.msg = "你指认了管家。遗嘱、凶器、谎言，三样证据摆在面前，他终于认罪。"
-	elif n == 2:
-		s.mode = "end"
-		s.outcome = "lose"
-		s.msg = "女仆有厨娘作证，指认失败。真凶趁乱溜走了……"
+	s.mode = "play"
+	var c: String = s.choice
+	s.choice = ""
+	match c:
+		"accuse":
+			s.mode = "end"
+			if n == 1:
+				s.outcome = "win"
+				s.msg = "你指认了管家。证据摆在面前，他终于认罪。"
+			else:
+				s.outcome = "lose"
+				s.msg = "女仆一脸茫然。真凶趁乱溜走了……"
+		"jar":
+			if not in_window(ent("jar_then").pos):
+				s.msg = "烟雾已经散了，够不着过去的东西。"
+				return
+			s.tobacco += 2
+			ent("jar_then").gone = true
+			ent("jar_now").gone = true
+			s.msg = "你拿走了过去的烟丝罐。（烟丝 +2）\n现在书房里那只罐子，也从来没出现过了。"
+		"maid":
+			if not in_window(ent("maid_then").pos):
+				s.msg = "烟雾已经散了，她听不见你了。"
+				return
+			s.tobacco -= 1
+			ent("maid_then").gone = true
+			ent("maid_now").bribed = true
+			s.msg = "你分给过去的女仆一撮烟丝。（烟丝 -1）\n她道了谢，往后院走去。这一晚，从此不一样了。"
 
 
 func cancel() -> void:
-	if s.mode == "accuse":
+	if s.mode == "choice":
 		s.mode = "play"
-		s.msg = "你决定再查查。"
+		s.choice = ""
+		s.msg = "你决定再想想。"
 
 
 func undo() -> void:
 	if history.is_empty():
 		return
 	s = history.pop_back()
+
+
+func _offer(id: String, text: String) -> void:
+	s.mode = "choice"
+	s.choice = id
+	s.msg = text
 
 
 func _snapshot() -> void:
@@ -246,7 +282,11 @@ func _after_action() -> void:
 			s.turns -= 1
 			if s.turns <= 0:
 				_close_cloud("烟雾散了。")
-	if s.mode == "play" and s.bowl == 0 and s.pouch == 0 and not s.cloud:
+	if s.mode == "choice" and not s.cloud and s.choice in ["jar", "maid"]:
+		# 互动用掉了最后一点烟雾，过去的东西已经够不着了
+		s.mode = "play"
+		s.choice = ""
+	if s.mode == "play" and s.tobacco == 0 and not s.cloud and not all_categories():
 		s.msg += "\n" + _stuck_msg()
 
 
@@ -278,7 +318,7 @@ func _nearest_free(from: Vector2i) -> Vector2i:
 
 
 func _stuck_msg() -> String:
-	return "烟丝全用完了。按 Z 撤销，或按 Backspace 重来。"
+	return "烟丝用完了。还有哪里能弄到烟丝？实在不行，按 Z 撤销或 Backspace 重来。"
 
 
 func _add_clue(id: String) -> void:
@@ -289,15 +329,14 @@ func _add_clue(id: String) -> void:
 func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 	match e.kind:
 		"inspector":
-			if s.clues.size() >= 3:
-				s.mode = "accuse"
-				s.msg = "警长：证据齐了？那么，凶手是谁？\n[1] 管家    [2] 女仆    [Esc] 再想想"
-			elif s.bowl == 0 and s.pouch == 0:
-				s.pouch += 1
-				s.puffs += 2
-				s.msg = "警长：烟丝没了？拿去吧，别跟别人说。（烟丝袋 +1，结案评价会降低）"
+			if all_categories():
+				_offer("accuse", "警长：在场、凶器、动机都齐了？那么，凶手是谁？\n[1] 管家    [2] 女仆    [Esc] 再想想")
 			else:
-				s.msg = "警长：老爷死在书房，现场门窗都从里面锁着。侦探，交给你了。（证据 %d/3）" % s.clues.size()
+				var missing: Array = []
+				for cat in CATEGORIES:
+					if not has_category(cat):
+						missing.append(CATEGORIES[cat][0])
+				s.msg = "警长：老爷死在书房，现场门窗都从里面锁着。还缺的证据：%s。" % "、".join(missing)
 		"butler":
 			if era == "past":
 				s.msg = "管家（过去）：老爷，您的茶。……今晚的事，您可别怪我。"
@@ -307,7 +346,27 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 			else:
 				s.msg = "管家：案发时我整晚都在厨房，从没进过书房。"
 		"maid":
-			s.msg = "女仆：我十点就睡下了，厨娘可以作证。"
+			if era == "past":
+				if s.tobacco <= 0:
+					s.msg = "女仆（过去）：先生，您身上有烟丝吗？……没有啊，那算了。"
+				else:
+					_offer("maid", "女仆（过去）：先生，能分我一撮烟丝吗？我想去后院歇会儿。\n[1] 给她一撮（烟丝 -1）    [Esc] 算了")
+			elif e.get("bribed", false):
+				_add_clue("witness")
+				s.msg = "女仆：昨晚有位怪先生给了我一撮烟丝，我去后院抽了一会儿。\n回来时，我看见管家从书房出来，袖口上有血！——获得证据【女仆证词】"
+			else:
+				s.msg = "女仆：我十点就睡下了，什么也没看见。"
+		"jar":
+			if era == "past":
+				_offer("jar", "老爷的烟丝罐，里面还有两撮上好的烟丝。拿走的话，现在那只罐子也就不存在了。\n[1] 拿走（烟丝 +2）    [Esc] 算了")
+			elif s.clues.has("print"):
+				s.msg = "罐子上的指纹已经拓下来了。"
+			elif s.ash > 0:
+				s.ash -= 1
+				_add_clue("print")
+				s.msg = "罐子已经空了。你往上撒了点烟灰，显出一枚指纹，是管家的。（烟灰 -1）——获得证据【罐上指纹】"
+			else:
+				s.msg = "空烟丝罐上好像有指纹，可惜看不清。要是有点粉末撒上去就好了……"
 		"desk":
 			if era == "past" and e.get("note", false):
 				e.note = false
@@ -317,6 +376,13 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 				s.msg = "过去的书桌上只剩一杯凉掉的茶。"
 			else:
 				s.msg = "书桌上空荡荡的，像是少了什么东西。"
+		"ashtray":
+			if e.used:
+				s.msg = "烟灰缸里已经没什么了。"
+			else:
+				e.used = true
+				s.tobacco += 1
+				s.msg = "烟灰缸里有半截没抽完的雪茄。你把它拆开，装进了烟丝袋。（烟丝 +1）"
 		"safe":
 			if era == "past":
 				s.msg = "保险箱锁着。"
@@ -350,5 +416,5 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 				s.msg = "暗格已经空了。"
 		"tin":
 			e.gone = true
-			s.pouch += 1
-			s.msg = "你找到一罐烟丝。（烟丝袋 +1）"
+			s.tobacco += 1
+			s.msg = "密室角落里有一罐烟丝。（烟丝 +1）"

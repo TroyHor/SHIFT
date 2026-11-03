@@ -207,7 +207,7 @@ static func _case1() -> Dictionary:
 					"text": "管家（现在）：我整晚都在厨房，从没进过书……\n烟雾里，过去的他正站在老爷身旁。他的脸一下子白了。"}},
 			{"id": "butler_then", "kind": "npc", "era": "past", "pos": Vector2i(7, 2), "label": "管", "name": "管家",
 				"say": "管家（过去）：老爷，您的茶。……今晚的事，您可别怪我。"},
-			{"id": "jar_now", "kind": "prints", "era": "present", "pos": Vector2i(6, 2), "label": "罐", "clue": "print",
+			{"id": "jar_now", "kind": "prints", "era": "present", "pos": Vector2i(6, 2), "label": "罐", "model": "tin", "clue": "print",
 				"hint": "空烟丝罐上好像有指纹，可惜看不清。要是有点粉末撒上去就好了……",
 				"text": "你往空罐子上撒了点烟灰，显出一枚指纹，是管家的。"},
 			{"id": "jar_then", "kind": "source", "era": "past", "pos": Vector2i(6, 2), "label": "罐", "amount": 2,

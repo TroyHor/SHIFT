@@ -21,6 +21,7 @@ const C_TEXT := Color("#e8e4da")
 const C_DIM := Color("#8a8f9e")
 const C_ACCENT := Color("#e0b46a")
 const C_RED := Color("#c9533b")
+const TIN := Color("#a0763a")
 
 const KIND_COLOR := {
 	"inspector": Color("#4a6fa5"),
@@ -224,30 +225,42 @@ func _glyph() -> int:
 	return clampi(int(TS * 0.46), 12, 22)
 
 
-## 烟丝锚点：所有烟丝来源一直画在地图上。过去的来源画成虚影，标出能拿几撮。
+## 烟丝锚点：所有烟丝来源用同一个模型（烟丝罐）。
+## 当前时代拿得到的画实体；另一个时代的画成虚影，让玩家提前规划路线。
+## 同一格两个时代都有东西时，先画现在的，现在的没了才露出过去的虚影。
 func _draw_anchors() -> void:
 	for e in game.anchors():
-		var r := _cell(e.pos)
 		var shown: bool = game.in_window(e.pos) == (e.era == "past")
-		var pulse := 0.55 + 0.45 * sin(t * 2.5)
 		if shown:
-			draw_rect(r.grow(-1), Color(C_ACCENT, 0.35 + 0.4 * pulse), false, 2.0)
-		else:
-			# 虚影：看得见，但要换个时代才拿得到
-			var g := r.grow(-TS * 0.18)
-			draw_rect(g, Color(C_ACCENT, 0.12))
-			_dashed_rect(g, Color(C_ACCENT, 0.55 + 0.3 * pulse))
-			_text_center(e.label, g.get_center() + Vector2(0, 1), int(_glyph() * 0.8), Color(C_ACCENT, 0.75))
-			var tag := "过去" if e.era == "past" else "现在"
-			_text_center(tag, r.get_center() + Vector2(0, TS * 0.42), maxi(9, int(TS * 0.24)), Color(C_ACCENT, 0.85))
-		var badge := "+%d" % e.amount
-		var bpos := r.position + Vector2(r.size.x - TS * 0.2, TS * 0.18)
-		draw_circle(bpos, TS * 0.2, Color("#1a1510"))
-		_text_center(badge, bpos, maxi(9, int(TS * 0.28)), C_ACCENT)
-		if not e.get("erases", []).is_empty():
-			var wpos := r.position + Vector2(TS * 0.18, TS * 0.18)
-			draw_circle(wpos, TS * 0.16, C_RED)
-			_text_center("!", wpos, maxi(9, int(TS * 0.26)), C_TEXT)
+			continue  # 实体已经由 _draw_ent 画出
+		var other: Array = game.present_ents() if e.era == "past" else game.past_ents()
+		var covered := false
+		for o in other:
+			if o.pos == e.pos and o.id != e.id:
+				covered = true
+				break
+		if covered:
+			continue
+		var pulse := 0.5 + 0.5 * sin(t * 2.0)
+		_draw_tin(_cell(e.pos), 0.28 + 0.12 * pulse, false)
+
+
+## 烟丝罐模型：所有烟丝来源共用
+func _draw_tin(cell: Rect2, alpha: float, glow: bool) -> void:
+	var w := cell.size.x * 0.62
+	var h := cell.size.y * 0.7
+	var body := Rect2(cell.get_center() - Vector2(w / 2, h / 2 - cell.size.y * 0.05), Vector2(w, h))
+	var col := Color(TIN, alpha)
+	var dark := Color(TIN.darkened(0.45), alpha)
+	if glow:
+		var pulse := 0.5 + 0.5 * sin(t * 2.5)
+		draw_rect(body.grow(3), Color(C_ACCENT, 0.15 + 0.25 * pulse), false, 2.0)
+	draw_rect(body, col)
+	var lid := Rect2(body.position - Vector2(2, h * 0.16), Vector2(w + 4, h * 0.22))
+	draw_rect(lid, Color(TIN.lightened(0.15), alpha))
+	draw_rect(lid, dark, false, 1.5)
+	draw_rect(body, dark, false, 1.5)
+	_text_center("烟", body.get_center() + Vector2(0, h * 0.08), int(_glyph() * 0.85), Color(C_TEXT, minf(1.0, alpha * 1.4)))
 
 
 func _dashed_rect(r: Rect2, col: Color) -> void:
@@ -282,6 +295,9 @@ func _draw_routes() -> void:
 
 
 func _draw_ent(e: Dictionary) -> void:
+	if e.kind == "source" or e.get("model", "") == "tin":
+		_draw_tin(_cell(e.pos), 1.0, e.kind == "source")
+		return
 	var r := _cell(e.pos).grow(-TS * 0.1)
 	var col: Color = KIND_COLOR.get(e.kind, Color("#6b5440"))
 	var past: bool = game.in_window(e.pos)

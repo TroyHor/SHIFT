@@ -4,8 +4,10 @@ extends Node2D
 const GameLogic := preload("res://scripts/game.gd")
 const FONT := preload("res://assets/fonts/NotoSansSC-Subset.ttf")
 
-const TS := 48
-const ORIGIN := Vector2(48, 72)
+## 棋盘区域：地图按大小缩放后居中放在这里
+const BOARD := Rect2(48, 72, 864, 480)
+var TS := 48
+var ORIGIN := Vector2(48, 72)
 
 const C_BG := Color("#0e1016")
 const C_NOW_FLOOR := Color("#2a3040")
@@ -113,15 +115,22 @@ func _cell(p: Vector2i) -> Rect2:
 	return Rect2(ORIGIN + Vector2(p) * TS, Vector2(TS, TS))
 
 
+func _layout() -> void:
+	TS = int(floor(minf(BOARD.size.x / game.W, BOARD.size.y / game.H)))
+	ORIGIN = BOARD.position + (BOARD.size - Vector2(game.W, game.H) * TS) / 2
+
+
 func _draw() -> void:
 	if title:
 		_draw_title()
 		return
+	_layout()
 	_draw_board()
 	_draw_later()
 	_draw_smoke()
 	for e in game.visible_ents():
 		_draw_ent(e)
+	_draw_anchors()
 	_draw_routes()
 	_draw_player()
 	_draw_hud()
@@ -149,12 +158,12 @@ func _draw_title() -> void:
 
 func _draw_board() -> void:
 	var cold: Array = game.L.cold
-	for y in Game.H:
-		for x in Game.W:
+	for y in game.H:
+		for x in game.W:
 			var p := Vector2i(x, y)
 			var past: bool = game.in_window(p)
 			var r := _cell(p)
-			var checker := (x + y) % 2 == 0
+			var checker: bool = (x + y) % 2 == 0
 			if game.tile_at(p) == Game.Tile.WALL:
 				draw_rect(r, C_PAST_WALL if past else C_NOW_WALL)
 			elif past:
@@ -174,20 +183,22 @@ func _draw_later() -> void:
 		match lt.kind:
 			"brick":
 				draw_rect(r, Color("#5c3a2c"))
+				var row_h := TS / 4.0
 				for i in 4:
-					var yy := r.position.y + 6 + i * 12
+					var yy := r.position.y + row_h * i
 					draw_line(Vector2(r.position.x, yy), Vector2(r.end.x, yy), C_NOW_WALL, 2)
-					var off := 12.0 if i % 2 == 0 else 24.0
-					draw_line(Vector2(r.position.x + off, yy), Vector2(r.position.x + off, yy + 12), C_NOW_WALL, 2)
+					var off := TS * (0.25 if i % 2 == 0 else 0.6)
+					draw_line(Vector2(r.position.x + off, yy), Vector2(r.position.x + off, yy + row_h), C_NOW_WALL, 2)
 			"planks":
 				draw_rect(r, Color("#3a2c22"))
 				for i in 3:
-					var yy := r.position.y + 8 + i * 14
-					draw_rect(Rect2(Vector2(r.position.x + 2, yy), Vector2(TS - 4, 9)), Color("#8a6440"))
+					var yy := r.position.y + TS * (0.12 + i * 0.3)
+					draw_rect(Rect2(Vector2(r.position.x + 2, yy), Vector2(TS - 4, TS * 0.2)), Color("#8a6440"))
 			"lock":
 				draw_rect(r, Color("#3b4250"))
-				draw_rect(Rect2(r.get_center() - Vector2(8, 4), Vector2(16, 14)), C_ACCENT)
-				draw_arc(r.get_center() - Vector2(0, 4), 6, PI, TAU, 12, C_ACCENT, 2.5)
+				var u := TS / 48.0
+				draw_rect(Rect2(r.get_center() - Vector2(8, 4) * u, Vector2(16, 14) * u), C_ACCENT)
+				draw_arc(r.get_center() - Vector2(0, 4) * u, 6 * u, PI, TAU, 12, C_ACCENT, 2.5)
 
 
 func _draw_smoke() -> void:
@@ -207,6 +218,47 @@ func _draw_smoke() -> void:
 	var edge := Color(0.92, 0.9, 0.85, 0.35 + 0.35 * density)
 	draw_rect(rect.grow(2), edge, false, 3.0)
 	_text_center("%d" % s.turns, rect.position + Vector2(rect.size.x - 10, 12), 14, Color(1, 1, 1, 0.9))
+
+
+func _glyph() -> int:
+	return clampi(int(TS * 0.46), 12, 22)
+
+
+## 烟丝锚点：所有烟丝来源一直画在地图上。过去的来源画成虚影，标出能拿几撮。
+func _draw_anchors() -> void:
+	for e in game.anchors():
+		var r := _cell(e.pos)
+		var shown: bool = game.in_window(e.pos) == (e.era == "past")
+		var pulse := 0.55 + 0.45 * sin(t * 2.5)
+		if shown:
+			draw_rect(r.grow(-1), Color(C_ACCENT, 0.35 + 0.4 * pulse), false, 2.0)
+		else:
+			# 虚影：看得见，但要换个时代才拿得到
+			var g := r.grow(-TS * 0.18)
+			draw_rect(g, Color(C_ACCENT, 0.12))
+			_dashed_rect(g, Color(C_ACCENT, 0.55 + 0.3 * pulse))
+			_text_center(e.label, g.get_center() + Vector2(0, 1), int(_glyph() * 0.8), Color(C_ACCENT, 0.75))
+			var tag := "过去" if e.era == "past" else "现在"
+			_text_center(tag, r.get_center() + Vector2(0, TS * 0.42), maxi(9, int(TS * 0.24)), Color(C_ACCENT, 0.85))
+		var badge := "+%d" % e.amount
+		var bpos := r.position + Vector2(r.size.x - TS * 0.2, TS * 0.18)
+		draw_circle(bpos, TS * 0.2, Color("#1a1510"))
+		_text_center(badge, bpos, maxi(9, int(TS * 0.28)), C_ACCENT)
+		if not e.get("erases", []).is_empty():
+			var wpos := r.position + Vector2(TS * 0.18, TS * 0.18)
+			draw_circle(wpos, TS * 0.16, C_RED)
+			_text_center("!", wpos, maxi(9, int(TS * 0.26)), C_TEXT)
+
+
+func _dashed_rect(r: Rect2, col: Color) -> void:
+	var pts := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), r.position]
+	for i in 4:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var n := 6
+		for k in n:
+			if k % 2 == 0:
+				draw_line(a.lerp(b, float(k) / n), a.lerp(b, float(k + 1) / n), col, 1.5)
 
 
 ## 烟雾里能看到的人，画出他们接下来要走的路
@@ -230,7 +282,7 @@ func _draw_routes() -> void:
 
 
 func _draw_ent(e: Dictionary) -> void:
-	var r := _cell(e.pos).grow(-5)
+	var r := _cell(e.pos).grow(-TS * 0.1)
 	var col: Color = KIND_COLOR.get(e.kind, Color("#6b5440"))
 	var past: bool = game.in_window(e.pos)
 	if e.kind == "candle" and e.get("lit", false):
@@ -251,7 +303,7 @@ func _draw_ent(e: Dictionary) -> void:
 		draw_rect(r, col)
 		draw_rect(r, col.darkened(0.35), false, 2.0)
 	var text_col := C_TEXT if e.kind not in ["ice", "candle"] or e.get("burnt", false) else Color("#2a2a2a")
-	_text_center(e.label, r.get_center() + Vector2(0, 1), 22, text_col)
+	_text_center(e.label, r.get_center() + Vector2(0, 1), _glyph(), text_col)
 	if e.kind == "candle" and e.get("lit", false) and past:
 		var flick := 3.0 + sin(t * 12.0) * 1.5
 		draw_circle(r.get_center() - Vector2(0, r.size.y * 0.5 + 2), flick, Color("#ff9a3c"))
@@ -261,12 +313,12 @@ func _draw_ent(e: Dictionary) -> void:
 
 func _draw_player() -> void:
 	var s: Dictionary = game.s
-	var r := _cell(s.pos).grow(-4)
+	var r := _cell(s.pos).grow(-TS * 0.08)
 	var past: bool = game.in_window(s.pos)
 	var col := C_RED if not past else Color("#a8563c")
 	draw_circle(r.get_center(), r.size.x * 0.5, col)
 	draw_arc(r.get_center(), r.size.x * 0.5, 0, TAU, 32, C_ACCENT, 2.0)
-	_text_center("探", r.get_center() + Vector2(0, 1), 22, C_TEXT)
+	_text_center("探", r.get_center() + Vector2(0, 1), _glyph(), C_TEXT)
 	if s.tobacco > 0:
 		for i in 3:
 			var k := fposmod(t * 0.8 + i * 0.33, 1.0)
@@ -298,13 +350,25 @@ func _draw_hud() -> void:
 	for c in s.clues:
 		clue_txt += game.clue_name(c) + "  "
 	_text(("证据：" + clue_txt) if clue_txt != "" else "", Vector2(48, y + 26), 14, C_DIM)
+	var now_n := 0
+	var now_amt := 0
+	var past_n := 0
+	var past_amt := 0
+	for a in game.anchors():
+		if a.era == "past":
+			past_n += 1
+			past_amt += a.amount
+		else:
+			now_n += 1
+			now_amt += a.amount
+	_text("烟丝锚点：现在 %d 处 +%d · 过去 %d 处 +%d" % [now_n, now_amt, past_n, past_amt], Vector2(420, y + 26), 14, C_ACCENT)
 	var era_txt: String = ("烟雾里：" + game.L.past_label) if s.cloud else ("现在：" + game.L.present_label)
 	_text(era_txt, Vector2(730, y + 26), 14, C_ACCENT if s.cloud else C_DIM)
 
 
 func _draw_message() -> void:
 	var s: Dictionary = game.s
-	var y := ORIGIN.y + Game.H * TS + 22
+	var y := BOARD.end.y + 22
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in mini(lines.size(), 3):
 		_text(lines[i], Vector2(48, y + i * 20), 15, C_TEXT)

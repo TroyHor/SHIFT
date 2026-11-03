@@ -28,11 +28,127 @@ const COUNT := 3
 static func get_level(i: int) -> Dictionary:
 	match i:
 		0:
-			return _case1()
+			return _wrap(_case1(), _case1_outer())
 		1:
-			return _case2()
+			return _wrap(_case2(), _case2_outer())
 		_:
-			return _case3()
+			return _wrap(_case3(), _case3_outer())
+
+
+# ---------------------------------------------------------------
+# 大地图：每个案件的核心区域（18x10）放在 26x14 地图的 (4,2)，外面一圈环廊。
+# 环廊只通向不需要机制就能进的房间；密室、冰窖、账房、C 车厢仍然只能靠机制进入。
+# ---------------------------------------------------------------
+const BIG_W := 26
+const BIG_H := 14
+const OFF := Vector2i(4, 2)
+
+
+static func _wrap(lv: Dictionary, outer: Dictionary) -> Dictionary:
+	var grid: Array = []
+	for y in BIG_H:
+		var row := ""
+		for x in BIG_W:
+			var ring := x >= 1 and x <= BIG_W - 2 and y >= 1 and y <= BIG_H - 2
+			row += "." if ring else "#"
+		grid.append(row)
+	for y in lv.map.size():
+		var src: String = lv.map[y]
+		var row: String = grid[y + OFF.y]
+		grid[y + OFF.y] = row.substr(0, OFF.x) + src + row.substr(OFF.x + src.length())
+	for wall in outer.get("walls", []):
+		_put_char(grid, wall, "#")
+	for door in outer.doors:
+		_put_char(grid, door, ".")
+	lv.map = grid
+	lv.start = lv.start + OFF
+	var cold: Array = []
+	for c in lv.cold:
+		cold.append(c + OFF)
+	lv.cold = cold
+	for lt in lv.later:
+		lt.pos += OFF
+		if lt.has("at"):
+			lt.at += OFF
+	for e in lv.ents:
+		e.pos += OFF
+		if e.has("seat"):
+			e.seat += OFF
+		if e.has("route"):
+			var r: Array = []
+			for w in e.route:
+				r.append(w + OFF)
+			e.route = r
+	if outer.has("tobacco"):
+		lv.tobacco = outer.tobacco
+	for e in outer.get("ents", []):
+		lv.ents.append(e)
+	return lv
+
+
+static func _put_char(grid: Array, p: Vector2i, ch: String) -> void:
+	var row: String = grid[p.y]
+	grid[p.y] = row.substr(0, p.x) + ch + row.substr(p.x + 1)
+
+
+## 案件一外围：西边花园、北边仆人走廊、南边回廊、东边储物间。
+static func _case1_outer() -> Dictionary:
+	return {
+		"tobacco": 1,
+		# 走廊里隔出几个小间，让路线有绕行
+		"walls": [Vector2i(22, 5), Vector2i(23, 5), Vector2i(22, 9), Vector2i(23, 9),
+			Vector2i(1, 5), Vector2i(2, 5)],
+		"doors": [Vector2i(4, 7), Vector2i(6, 2), Vector2i(6, 11), Vector2i(12, 11), Vector2i(12, 2)],
+		"ents": [
+			{"id": "garden_tin", "kind": "source", "era": "present", "pos": Vector2i(1, 12), "label": "烟", "amount": 1,
+				"text": "花园长椅底下，园丁藏了一罐烟丝。"},
+			{"id": "bench", "kind": "static", "era": "both", "pos": Vector2i(2, 8), "label": "椅",
+				"text": "花园长椅，坐垫还是湿的。", "past_text": "长椅上落满了烟灰。女仆常在这里偷偷抽烟。"},
+			{"id": "pouch_then", "kind": "source", "era": "past", "pos": Vector2i(8, 6), "label": "袋", "amount": 1,
+				"text": "过去的门厅桌上，有人落下了一小袋烟丝。"},
+			{"id": "crates", "kind": "static", "era": "both", "pos": Vector2i(23, 7), "label": "杂",
+				"text": "储物间里堆满了杂物。"},
+			{"id": "plant", "kind": "static", "era": "both", "pos": Vector2i(24, 1), "label": "植",
+				"text": "一盆半死的龟背竹。"},
+		],
+	}
+
+
+## 案件二外围：西边马厩、北边雪地回廊、南边后厨走廊、东边后巷。
+static func _case2_outer() -> Dictionary:
+	return {
+		"tobacco": 1,
+		"walls": [Vector2i(1, 6), Vector2i(2, 6), Vector2i(22, 7), Vector2i(23, 7)],
+		"doors": [Vector2i(4, 7), Vector2i(6, 2), Vector2i(6, 11), Vector2i(12, 2), Vector2i(13, 11)],
+		"ents": [
+			{"id": "cellar_tin", "kind": "source", "era": "present", "pos": Vector2i(20, 3), "label": "烟", "amount": 1,
+				"text": "冰窖角落有一罐受潮的烟丝，还能抽。"},
+			{"id": "horse", "kind": "static", "era": "both", "pos": Vector2i(2, 3), "label": "马",
+				"text": "马在打响鼻。", "past_text": "马还没卸鞍，雪水顺着鬃毛往下滴。"},
+			{"id": "snowman", "kind": "static", "era": "both", "pos": Vector2i(1, 1), "label": "雪",
+				"text": "雪人塌了一半。", "past_text": "孩子们刚堆好的雪人。"},
+			{"id": "barrels", "kind": "static", "era": "both", "pos": Vector2i(23, 10), "label": "桶",
+				"text": "后巷堆着空酒桶。"},
+		],
+	}
+
+
+## 案件三外围：西边餐车，北侧和南侧的车外通道（只通 A 车厢，B、C 车厢没有侧门）。
+static func _case3_outer() -> Dictionary:
+	return {
+		"tobacco": 2,
+		"doors": [Vector2i(4, 7), Vector2i(6, 2), Vector2i(6, 11)],
+		"ents": [
+			{"id": "c_tin", "kind": "source", "era": "present", "pos": Vector2i(20, 3), "label": "烟", "amount": 1,
+				"text": "行李员的铺位下有一包烟丝。"},
+			{"id": "table1", "kind": "static", "era": "both", "pos": Vector2i(2, 4), "label": "桌",
+				"text": "餐车的桌子，桌布上有酒渍。", "past_text": "餐车里还有人在打牌。"},
+			{"id": "table2", "kind": "static", "era": "both", "pos": Vector2i(2, 10), "label": "桌",
+				"text": "餐车的桌子。"},
+			{"id": "dining_then", "kind": "source", "era": "past", "pos": Vector2i(3, 8), "label": "包", "amount": 2,
+				"text": "过去的餐车柜台上放着一包没拆的烟丝。到了早上，它已经被打牌的人分光了。"},
+		],
+	}
 
 
 # ---------------------------------------------------------------

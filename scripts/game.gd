@@ -12,13 +12,13 @@ extends RefCounted
 ##      * 点燃的蜡烛烧一整夜，四邻的可燃物到现在会烧光；冰块到现在会化掉，除非在冷的格子上。
 ##      * 过去的人在这一刻之后还会走动；他们现在在哪、看见了谁，都由这段路决定。
 
-const W := 18
-const H := 10
 const SMOKE_TURNS := 8
 const DIRS := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
 
 enum Tile { FLOOR, WALL }
 
+var W := 18
+var H := 10
 var level_idx := 0
 var L: Dictionary  # 当前关卡数据（只读）
 var s: Dictionary  # 可撤销的状态
@@ -33,6 +33,8 @@ func _init(idx: int = 0) -> void:
 func load_level(idx: int) -> void:
 	level_idx = clampi(idx, 0, Levels.COUNT - 1)
 	L = Levels.get_level(level_idx)
+	H = L.map.size()
+	W = String(L.map[0]).length()
 	reset()
 
 
@@ -152,6 +154,15 @@ func all_categories() -> bool:
 
 func clue_name(id: String) -> String:
 	return L.clue_names.get(id, id)
+
+
+## 所有还在的烟丝来源（不论过去还是现在），给玩家规划路线用
+func anchors() -> Array:
+	var out: Array = []
+	for e in s.ents:
+		if e.kind == "source" and not e.get("gone", false):
+			out.append(e)
+	return out
 
 
 ## 过去的人接下来要走的路（画在烟雾里）

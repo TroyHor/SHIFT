@@ -36,11 +36,11 @@ godot --headless --path . --export-release "Web" build/web/index.html
 godot --headless --path . --export-release "macOS" build/mac/SHIFT-PipeDetective.zip
 ```
 
-`assets/fonts/NotoSansSC-Subset.ttf` 是 Noto Sans SC 的子集，只包含代码里用到的字。改了文字后要重新生成，否则新字会显示成方块：
+`assets/fonts/` 里是 Noto Sans SC（正文）和 Noto Serif SC（标题）的子集，只包含代码里用到的字。改了文字后要重新生成，否则新字会显示成方块：
 
 ```sh
 pip install fonttools
-python3 tools/subset_font.py <NotoSansSC 完整字体路径>
+python3 tools/subset_font.py <NotoSansSC 完整字体路径> <NotoSerifSC 完整字体路径>
 ```
 
 字体以 SIL Open Font License 授权，见 `assets/fonts/OFL.txt`。

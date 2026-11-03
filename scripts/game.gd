@@ -1,125 +1,73 @@
 class_name Game
 extends RefCounted
-## 纯逻辑：不依赖场景节点，方便无界面测试。
-## 规则摘要：
-##  - Shift 吐一口烟（花 1 撮烟丝）：以侦探为中心的 3x3 格子变成"过去"（案发当晚）。
-##  - 烟雾停在原地；在烟里走动、互动都不散，走出烟雾或浓度耗尽才复原。
-##  - 每个行动（移动、碰撞互动）消耗 1 点烟雾浓度。
-##  - 在过去做的改动会保留到现在；物品可以随意跨时代携带。
-## 烟丝资源：
-##  - 获取：现在的烟灰缸、密室里的烟丝罐、过去老爷的烟丝罐（拿走后现在那罐也消失，罐上的指纹随之消失）。
-##  - 消耗：吐烟开窗；或者送给过去的人，改变他们当晚的行动，现在的证词随之改变。
-##  - 副产品：每吐一口烟得到 1 份烟灰，撒在物体上可以显出指纹。
+## 纯逻辑：不依赖场景节点，方便无界面测试。关卡数据见 levels.gd。
+##
+## 核心规则（三个案件通用）：
+##  - Shift 花 1 撮烟丝吐一口烟：以侦探为中心的 3x3 格子变成"过去"，得到 1 份烟灰。
+##  - 烟雾停在原地，每个行动消耗 1 点浓度（共 8 点）；走出烟雾或浓度耗尽就回到现在。
+##  - 改变世界只能在过去。"现在"只能看、问、拿。
+##  - 现在 = 过去 + 这一夜的流逝：
+##      * 过去推过的家具，现在还在那里（persist）。
+##      * 后来才砌的墙 / 钉的门 / 上的锁：如果过去那一格被东西占着，或者负责的人没走到，就不会出现。
+##      * 点燃的蜡烛烧一整夜，四邻的可燃物到现在会烧光；冰块到现在会化掉，除非在冷的格子上。
+##      * 过去的人在这一刻之后还会走动；他们现在在哪、看见了谁，都由这段路决定。
 
 const W := 18
 const H := 10
 const SMOKE_TURNS := 8
-const START_TOBACCO := 2
-const START := Vector2i(2, 7)
+const DIRS := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
 
-enum Tile { FLOOR, WALL, BRICK }
+enum Tile { FLOOR, WALL }
 
-# 现在（次日清晨）的地图。# 墙  . 地板  X 砖砌死的门
-const PRESENT_MAP := [
-	"##################",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#......X....#",
-	"#...........#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"##################",
-]
-
-# 过去（案发当晚 22:50）的地图：东侧那扇门当时还没被砌死。
-const PAST_MAP := [
-	"##################",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#...........#",
-	"#...........#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"#....#......#....#",
-	"##################",
-]
-
-const CLUE_NAMES := {
-	"lie": "证词矛盾", "print": "罐上指纹", "witness": "女仆证词",
-	"knife": "凶器", "will": "遗嘱",
-}
-# 指认需要三类证据：在场、凶器、动机。"在场"有三条路可以拿到。
-const CATEGORIES := {
-	"presence": ["在场", ["lie", "print", "witness"]],
-	"weapon": ["凶器", ["knife"]],
-	"motive": ["动机", ["will"]],
-}
-const ITEM_NAMES := {"note": "密码纸条"}
-
-var s: Dictionary
+var level_idx := 0
+var L: Dictionary  # 当前关卡数据（只读）
+var s: Dictionary  # 可撤销的状态
+var d: Dictionary  # 由 s 推导出来的"现在"，每次状态变化后重算
 var history: Array = []
 
 
-func _init() -> void:
+func _init(idx: int = 0) -> void:
+	load_level(idx)
+
+
+func load_level(idx: int) -> void:
+	level_idx = clampi(idx, 0, Levels.COUNT - 1)
+	L = Levels.get_level(level_idx)
 	reset()
 
 
 func reset() -> void:
+	var ents: Array = []
+	for e in L.ents:
+		ents.append(e.duplicate(true))
 	s = {
-		"pos": START,
-		"tobacco": START_TOBACCO,
+		"pos": L.start,
+		"tobacco": L.tobacco,
 		"ash": 0,
 		"cloud": false,
 		"center": Vector2i.ZERO,
 		"turns": 0,
-		"inv": [],
 		"clues": [],
-		"ents": _make_ents(),
-		"msg": "富商死在书房里。按 Shift 吐一口烟，看看案发当晚发生了什么。烟丝不多，省着点用。",
+		"flags": {},
+		"seen": {},
+		"ents": ents,
+		"msg": L.intro,
 		"mode": "play",
-		"choice": "",
+		"choice": {},
 		"outcome": "",
 	}
 	history.clear()
+	_derive()
 
 
-func _make_ents() -> Array:
-	# 列表靠后的实体画在上层，碰撞时也优先命中。
-	return [
-		{"id": "inspector", "kind": "inspector", "era": "present", "pos": Vector2i(2, 2)},
-		{"id": "maid_now", "kind": "maid", "era": "present", "pos": Vector2i(3, 7)},
-		{"id": "maid_then", "kind": "maid", "era": "past", "pos": Vector2i(3, 3)},
-		{"id": "butler_now", "kind": "butler", "era": "present", "pos": Vector2i(6, 5)},
-		{"id": "butler_then", "kind": "butler", "era": "past", "pos": Vector2i(7, 2)},
-		{"id": "jar_now", "kind": "jar", "era": "present", "pos": Vector2i(6, 2)},
-		{"id": "jar_then", "kind": "jar", "era": "past", "pos": Vector2i(6, 2)},
-		{"id": "desk_now", "kind": "desk", "era": "present", "pos": Vector2i(8, 2)},
-		{"id": "desk_then", "kind": "desk", "era": "past", "pos": Vector2i(8, 2), "note": true},
-		{"id": "ashtray", "kind": "ashtray", "era": "present", "pos": Vector2i(11, 1), "used": false},
-		{"id": "cache", "kind": "cache", "era": "present", "pos": Vector2i(9, 7), "open": false},
-		{"id": "shelf_now", "kind": "shelf", "era": "present", "pos": Vector2i(9, 7)},
-		{"id": "shelf_then", "kind": "shelf", "era": "past", "pos": Vector2i(9, 7)},
-		{"id": "safe_now", "kind": "safe", "era": "present", "pos": Vector2i(15, 2), "open": false},
-		{"id": "safe_then", "kind": "safe", "era": "past", "pos": Vector2i(15, 2)},
-		{"id": "tin", "kind": "tin", "era": "present", "pos": Vector2i(15, 7)},
-	]
+# =============================================================
+# 查询
+# =============================================================
 
-
-# ---------- 查询 ----------
-
-func tile_at(era: String, p: Vector2i) -> int:
+func tile_at(p: Vector2i) -> int:
 	if p.x < 0 or p.y < 0 or p.x >= W or p.y >= H:
 		return Tile.WALL
-	var row: String = (PAST_MAP if era == "past" else PRESENT_MAP)[p.y]
-	match row[p.x]:
-		"#":
-			return Tile.WALL
-		"X":
-			return Tile.BRICK
-	return Tile.FLOOR
+	return Tile.WALL if L.map[p.y][p.x] == "#" else Tile.FLOOR
 
 
 func in_window(p: Vector2i) -> bool:
@@ -133,15 +81,6 @@ func era_at(p: Vector2i) -> String:
 	return "past" if in_window(p) else "present"
 
 
-func ent_at(era: String, p: Vector2i) -> Variant:
-	var ents: Array = s.ents
-	for i in range(ents.size() - 1, -1, -1):
-		var e: Dictionary = ents[i]
-		if e.era == era and e.pos == p and not e.get("gone", false):
-			return e
-	return null
-
-
 func ent(id: String) -> Dictionary:
 	for e in s.ents:
 		if e.id == id:
@@ -149,43 +88,255 @@ func ent(id: String) -> Dictionary:
 	return {}
 
 
-func visible_ents() -> Array:
+func past_ents() -> Array:
 	var out: Array = []
 	for e in s.ents:
-		if e.get("gone", false):
-			continue
-		if era_at(e.pos) == e.era:
+		if (e.era == "past" or e.era == "both") and not e.get("gone", false):
 			out.append(e)
 	return out
 
 
-func has_category(cat: String) -> bool:
-	for c in CATEGORIES[cat][1]:
+func present_ents() -> Array:
+	return d.present
+
+
+## 某一格某个时代最上层的东西
+func ent_at(era: String, p: Vector2i) -> Variant:
+	var list: Array = past_ents() if era == "past" else present_ents()
+	for i in range(list.size() - 1, -1, -1):
+		var e: Dictionary = list[i]
+		if e.pos == p and e.get("solid", true):
+			return e
+	return null
+
+
+func later_at(p: Vector2i) -> Variant:
+	for lt in d.later_active:
+		if lt.pos == p:
+			return lt
+	return null
+
+
+func solid(era: String, p: Vector2i) -> bool:
+	if tile_at(p) == Tile.WALL:
+		return true
+	if era == "present" and later_at(p) != null:
+		return true
+	return ent_at(era, p) != null
+
+
+func visible_ents() -> Array:
+	var out: Array = []
+	for e in present_ents():
+		if not in_window(e.pos):
+			out.append(e)
+	for e in past_ents():
+		if in_window(e.pos):
+			out.append(e)
+	return out
+
+
+func has_category(cat_idx: int) -> bool:
+	for c in L.categories[cat_idx][2]:
 		if s.clues.has(c):
 			return true
 	return false
 
 
 func all_categories() -> bool:
-	for cat in CATEGORIES:
-		if not has_category(cat):
+	for i in L.categories.size():
+		if not has_category(i):
 			return false
 	return true
 
 
-# ---------- 行动 ----------
+func clue_name(id: String) -> String:
+	return L.clue_names.get(id, id)
+
+
+## 过去的人接下来要走的路（画在烟雾里）
+func route_of(id: String) -> Array:
+	return d.paths.get(id, [])
+
+
+# =============================================================
+# 推导"现在"
+# =============================================================
+
+func _derive() -> void:
+	d = {"present": [], "later_active": [], "paths": {}, "saw": {}, "reached": {}}
+	var past := past_ents()
+	var occupied := {}
+	for e in past:
+		if e.get("solid", true):
+			occupied[e.pos] = true
+
+	# 1. 过去的人接下来的路
+	_simulate_people(past)
+
+	# 2. 后来的建造
+	for lt in L.later:
+		if occupied.has(lt.pos):
+			continue
+		if lt.has("by") and not d.reached.get(lt.by + "@" + str(lt.at), false):
+			continue
+		d.later_active.append(lt)
+
+	# 3. 燃烧
+	var burned := {}
+	for c in past:
+		if c.kind == "candle" and c.get("lit", false):
+			for dir in DIRS:
+				burned[c.pos + dir] = true
+
+	# 4. 现在的东西：先放现在本来就有的，再放从过去留下来的
+	var present: Array = []
+	for e in s.ents:
+		if e.get("gone", false):
+			continue
+		if e.era == "present" or e.era == "both":
+			present.append(e)
+	for e in past:
+		if e.era == "both":
+			continue
+		var kind: String = e.kind
+		if kind == "ice":
+			if L.cold.has(e.pos):
+				present.append(_echo(e, e.pos, {}))
+			continue
+		if kind == "candle":
+			if e.get("lit", false):
+				present.append(_echo(e, e.pos, {"label": "蜡", "solid": false, "burnt": true}))
+			elif e.get("persist", false):
+				present.append(_echo(e, e.pos, {}))
+			continue
+		if kind == "npc" and e.has("route"):
+			var path: Array = d.paths[e.id]
+			var now: Dictionary = e.now.duplicate(true)
+			now.merge({"id": e.id + "#now", "kind": "npc", "era": "present", "pos": path[path.size() - 1],
+				"label": e.label, "name": e.name, "src": e.id})
+			present.append(now)
+			continue
+		if e.get("persist", false):
+			if e.get("flammable", false) and burned.has(e.pos):
+				present.append(_echo(e, e.pos, {"label": "烬", "solid": false, "burnt": true}))
+			else:
+				present.append(_echo(e, e.pos, {}))
+	# 地上的暗格被东西盖住时看不见：把暗格排到最底层
+	present.sort_custom(func(a, b): return a.kind == "cache" and b.kind != "cache")
+	d.present = present
+
+
+func _echo(e: Dictionary, pos: Vector2i, extra: Dictionary) -> Dictionary:
+	var out := {"id": e.id + "#now", "kind": e.kind, "era": "present", "pos": pos,
+		"label": e.label, "name": e.get("name", ""), "src": e.id, "echo": true,
+		"now_text": e.get("now_text", "")}
+	out.merge(extra, true)
+	return out
+
+
+func _simulate_people(past: Array) -> void:
+	var walkers: Array = []
+	var baits: Array = []
+	for e in past:
+		if e.kind == "npc" and e.has("route"):
+			walkers.append(e)
+		if e.kind == "ashtray" and e.get("baited", false):
+			baits.append(e)
+	var blocked := {}
+	for e in past:
+		if e.get("solid", true) and not (e.kind == "npc"):
+			blocked[e.pos] = true
+	# 每个放了烟丝的烟灰缸，只吸引离它最近的一个烟民；他会坐在旁边抽到天亮
+	var lured := {}
+	for b in baits:
+		var best_id := ""
+		var best_len := 9999
+		for w in walkers:
+			if not w.get("smoker", false) or lured.has(w.id):
+				continue
+			var p := _bfs(w.pos, b.seat, blocked)
+			if not p.is_empty() and p.size() < best_len:
+				best_len = p.size()
+				best_id = w.id
+		if best_id != "":
+			lured[best_id] = b.seat
+	var timelines := {}
+	var longest := 0
+	for w in walkers:
+		var targets: Array = w.route
+		var delay: int = w.get("delay", 0)
+		if lured.has(w.id):
+			targets = [lured[w.id]]
+			delay = 0
+		var line: Array = []
+		for i in delay + 1:
+			line.append(w.pos)
+		var cur: Vector2i = w.pos
+		for t in targets:
+			var p := _bfs(cur, t, blocked)
+			if p.is_empty():
+				break
+			for i in range(1, p.size()):
+				line.append(p[i])
+				d.reached[w.id + "@" + str(p[i])] = true
+			cur = t
+		d.reached[w.id + "@" + str(w.pos)] = true
+		timelines[w.id] = line
+		d.paths[w.id] = line
+		longest = maxi(longest, line.size())
+	# 同一时刻相距一格以内，就算看见了对方
+	for a in walkers:
+		d.saw[a.id] = {}
+	for t in longest:
+		for i in walkers.size():
+			for j in range(i + 1, walkers.size()):
+				var la: Array = timelines[walkers[i].id]
+				var lb: Array = timelines[walkers[j].id]
+				var pa: Vector2i = la[mini(t, la.size() - 1)]
+				var pb: Vector2i = lb[mini(t, lb.size() - 1)]
+				if absi(pa.x - pb.x) <= 1 and absi(pa.y - pb.y) <= 1:
+					d.saw[walkers[i].id][walkers[j].id] = true
+					d.saw[walkers[j].id][walkers[i].id] = true
+
+
+func _bfs(from: Vector2i, to: Vector2i, blocked: Dictionary) -> Array:
+	if from == to:
+		return [from]
+	var prev := {from: from}
+	var queue: Array = [from]
+	while not queue.is_empty():
+		var p: Vector2i = queue.pop_front()
+		for dir in DIRS:
+			var n: Vector2i = p + dir
+			if prev.has(n) or tile_at(n) == Tile.WALL or (blocked.has(n) and n != to):
+				continue
+			prev[n] = p
+			if n == to:
+				var path: Array = [n]
+				while path[0] != from:
+					path.push_front(prev[path[0]])
+				return path
+			queue.append(n)
+	return []
+
+
+# =============================================================
+# 行动
+# =============================================================
 
 func move(dir: Vector2i) -> void:
 	if s.mode != "play":
 		return
 	var t: Vector2i = s.pos + dir
+	if tile_at(t) == Tile.WALL:
+		return
 	var era := era_at(t)
-	var tile := tile_at(era, t)
-	if tile == Tile.WALL:
-		return
-	if tile == Tile.BRICK:
-		s.msg = "这扇门被砖砌死了。……可案发那晚，它还开着吗？"
-		return
+	if era == "present":
+		var lt = later_at(t)
+		if lt != null and ent_at("present", t) == null:
+			s.msg = lt.text
+			return
 	_snapshot()
 	s.msg = ""
 	var e = ent_at(era, t)
@@ -208,51 +359,66 @@ func puff() -> void:
 	s.cloud = true
 	s.center = s.pos
 	s.turns = SMOKE_TURNS
-	s.msg = "你吐出一口烟，烟雾里浮现出案发当晚。（烟灰 +1）"
+	s.msg = "你吐出一口烟，烟雾里浮现出%s。（烟灰 +1）" % L.past_label
 
 
-## 选择框里按数字键。
 func choose(n: int) -> void:
 	if s.mode != "choice":
 		return
-	if s.choice != "accuse" and n != 1:
+	var c: Dictionary = s.choice
+	if c.type != "accuse" and c.type != "candle" and n != 1:
 		cancel()
+		return
+	if c.type == "candle" and n not in [1, 2]:
 		return
 	_snapshot()
 	s.mode = "play"
-	var c: String = s.choice
-	s.choice = ""
-	match c:
-		"accuse":
-			s.mode = "end"
-			if n == 1:
-				s.outcome = "win"
-				s.msg = "你指认了管家。证据摆在面前，他终于认罪。"
-			else:
-				s.outcome = "lose"
-				s.msg = "女仆一脸茫然。真凶趁乱溜走了……"
-		"jar":
-			if not in_window(ent("jar_then").pos):
-				s.msg = "烟雾已经散了，够不着过去的东西。"
-				return
-			s.tobacco += 2
-			ent("jar_then").gone = true
-			ent("jar_now").gone = true
-			s.msg = "你拿走了过去的烟丝罐。（烟丝 +2）\n现在书房里那只罐子，也从来没出现过了。"
-		"maid":
-			if not in_window(ent("maid_then").pos):
-				s.msg = "烟雾已经散了，她听不见你了。"
-				return
+	s.choice = {}
+	if c.type == "accuse":
+		var acc: Dictionary = L.accuse
+		if n < 1 or n > acc.options.size():
+			history.pop_back()
+			s.mode = "choice"
+			s.choice = c
+			return
+		s.mode = "end"
+		s.outcome = "win" if n - 1 == acc.answer else "lose"
+		s.msg = acc.win if s.outcome == "win" else acc.lose
+		return
+	var e := ent(c.target)
+	if not in_window(e.pos):
+		s.msg = "烟雾已经散了，够不着过去的东西。"
+		return
+	match c.type:
+		"take":
+			s.tobacco += e.amount
+			e.gone = true
+			for id in e.get("erases", []):
+				ent(id).gone = true
+			s.msg = e.text + "（烟丝 +%d）" % e.amount
+		"gift":
 			s.tobacco -= 1
-			ent("maid_then").gone = true
-			ent("maid_now").bribed = true
-			s.msg = "你分给过去的女仆一撮烟丝。（烟丝 -1）\n她道了谢，往后院走去。这一晚，从此不一样了。"
+			e.gone = true
+			s.flags[e.gift.flag] = true
+			s.msg = "你分出一撮烟丝。（烟丝 -1）\n" + e.gift.done
+		"bait":
+			s.tobacco -= 1
+			e.baited = true
+			s.msg = "你在过去的烟灰缸里留下一撮烟丝。（烟丝 -1）\n爱抽烟的人闻到味道，会过来坐着抽到天亮。"
+		"candle":
+			if n == 1:
+				s.tobacco -= 1
+				e.lit = true
+				s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）\n这支蜡烛会一直烧到天亮，烧到旁边能烧的东西。"
+			else:
+				_push(e, c.dir)
+	_derive()
 
 
 func cancel() -> void:
 	if s.mode == "choice":
 		s.mode = "play"
-		s.choice = ""
+		s.choice = {}
 		s.msg = "你决定再想想。"
 
 
@@ -260,11 +426,12 @@ func undo() -> void:
 	if history.is_empty():
 		return
 	s = history.pop_back()
+	_derive()
 
 
-func _offer(id: String, text: String) -> void:
+func _offer(type: String, target: String, text: String, dir: Vector2i = Vector2i.ZERO) -> void:
 	s.mode = "choice"
-	s.choice = id
+	s.choice = {"type": type, "target": target, "dir": dir}
 	s.msg = text
 
 
@@ -282,24 +449,21 @@ func _after_action() -> void:
 			s.turns -= 1
 			if s.turns <= 0:
 				_close_cloud("烟雾散了。")
-	if s.mode == "choice" and not s.cloud and s.choice in ["jar", "maid"]:
-		# 互动用掉了最后一点烟雾，过去的东西已经够不着了
+	if s.mode == "choice" and not s.cloud and s.choice.type != "accuse":
 		s.mode = "play"
-		s.choice = ""
+		s.choice = {}
+	_derive()
 	if s.mode == "play" and s.tobacco == 0 and not s.cloud and not all_categories():
 		s.msg += "\n" + _stuck_msg()
 
 
 func _close_cloud(reason: String) -> void:
 	s.cloud = false
+	_derive()
 	s.msg = reason if s.msg == "" else s.msg + "\n" + reason
-	if not _present_free(s.pos):
+	if solid("present", s.pos):
 		s.pos = _nearest_free(s.center)
 		s.msg += "\n现实合拢，把你挤回了烟雾升起的地方。"
-
-
-func _present_free(p: Vector2i) -> bool:
-	return tile_at("present", p) == Tile.FLOOR and ent_at("present", p) == null
 
 
 func _nearest_free(from: Vector2i) -> Vector2i:
@@ -307,114 +471,163 @@ func _nearest_free(from: Vector2i) -> Vector2i:
 	var queue: Array = [from]
 	while not queue.is_empty():
 		var p: Vector2i = queue.pop_front()
-		if _present_free(p):
+		if not solid("present", p):
 			return p
-		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
-			var n: Vector2i = p + d
+		for dir in DIRS:
+			var n: Vector2i = p + dir
 			if n.x >= 0 and n.y >= 0 and n.x < W and n.y < H and not seen.has(n):
 				seen[n] = true
 				queue.append(n)
-	return START
+	return L.start
 
 
 func _stuck_msg() -> String:
 	return "烟丝用完了。还有哪里能弄到烟丝？实在不行，按 Z 撤销或 Backspace 重来。"
 
 
-func _add_clue(id: String) -> void:
-	if not s.clues.has(id):
-		s.clues.append(id)
+func _add_clue(id: String) -> String:
+	if s.clues.has(id):
+		return ""
+	s.clues.append(id)
+	return "——获得证据【%s】" % clue_name(id)
+
+
+func _push(e: Dictionary, dir: Vector2i) -> void:
+	var tgt: Vector2i = e.pos + dir
+	if not in_window(tgt):
+		s.msg = "烟雾外面是现在。过去的东西，推不出烟雾。"
+	elif solid("past", tgt):
+		s.msg = "推不动，那边被挡住了。"
+	else:
+		e.pos = tgt
+		s.msg = "你在过去推动了%s。现在的它，也会在新的位置。" % e.get("name", "它") if e.get("persist", false) \
+			else "你在过去推动了%s。" % e.get("name", "它")
 
 
 func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
+	var past := era == "past"
+	if e.get("echo", false):
+		# 从过去留下来的东西：现在改不了它
+		var src := ent(e.src)
+		if e.get("burnt", false):
+			s.msg = "只剩一堆灰烬。"
+		else:
+			s.msg = e.now_text if e.now_text != "" else "%s纹丝不动。改变它得回到过去。" % src.get("name", "它")
+		return
 	match e.kind:
 		"inspector":
 			if all_categories():
-				_offer("accuse", "警长：在场、凶器、动机都齐了？那么，凶手是谁？\n[1] 管家    [2] 女仆    [Esc] 再想想")
+				var opts := ""
+				for i in L.accuse.options.size():
+					opts += "[%d] %s    " % [i + 1, L.accuse.options[i]]
+				_offer("accuse", "", "警长：%s都齐了？那么，凶手是谁？\n%s[Esc] 再想想" % [_cat_list(true), opts])
 			else:
-				var missing: Array = []
-				for cat in CATEGORIES:
-					if not has_category(cat):
-						missing.append(CATEGORIES[cat][0])
-				s.msg = "警长：老爷死在书房，现场门窗都从里面锁着。还缺的证据：%s。" % "、".join(missing)
-		"butler":
-			if era == "past":
-				s.msg = "管家（过去）：老爷，您的茶。……今晚的事，您可别怪我。"
-			elif s.cloud and in_window(ent("butler_then").pos):
-				_add_clue("lie")
-				s.msg = "管家（现在）：我整晚都在厨房，从没进过书……\n烟雾里，过去的他正站在老爷身旁。他的脸一下子白了。——获得证据【证词矛盾】"
+				s.msg = "警长：交给你了，侦探。还缺的证据：%s。" % _cat_list(false)
+		"npc":
+			_talk(e, past)
+		"source":
+			if past and not e.get("erases", []).is_empty():
+				_offer("take", e.id, e.ask + "\n[1] 拿走（烟丝 +%d）    [Esc] 算了" % e.amount)
 			else:
-				s.msg = "管家：案发时我整晚都在厨房，从没进过书房。"
-		"maid":
-			if era == "past":
-				if s.tobacco <= 0:
-					s.msg = "女仆（过去）：先生，您身上有烟丝吗？……没有啊，那算了。"
-				else:
-					_offer("maid", "女仆（过去）：先生，能分我一撮烟丝吗？我想去后院歇会儿。\n[1] 给她一撮（烟丝 -1）    [Esc] 算了")
-			elif e.get("bribed", false):
-				_add_clue("witness")
-				s.msg = "女仆：昨晚有位怪先生给了我一撮烟丝，我去后院抽了一会儿。\n回来时，我看见管家从书房出来，袖口上有血！——获得证据【女仆证词】"
-			else:
-				s.msg = "女仆：我十点就睡下了，什么也没看见。"
-		"jar":
-			if era == "past":
-				_offer("jar", "老爷的烟丝罐，里面还有两撮上好的烟丝。拿走的话，现在那只罐子也就不存在了。\n[1] 拿走（烟丝 +2）    [Esc] 算了")
-			elif s.clues.has("print"):
-				s.msg = "罐子上的指纹已经拓下来了。"
+				e.gone = true
+				s.tobacco += e.amount
+				s.msg = e.text + "（烟丝 +%d）" % e.amount
+		"prints":
+			if s.clues.has(e.clue):
+				s.msg = "指纹已经拓下来了。"
 			elif s.ash > 0:
 				s.ash -= 1
-				_add_clue("print")
-				s.msg = "罐子已经空了。你往上撒了点烟灰，显出一枚指纹，是管家的。（烟灰 -1）——获得证据【罐上指纹】"
+				s.msg = e.text + "（烟灰 -1）" + _add_clue(e.clue)
 			else:
-				s.msg = "空烟丝罐上好像有指纹，可惜看不清。要是有点粉末撒上去就好了……"
-		"desk":
-			if era == "past" and e.get("note", false):
-				e.note = false
-				s.inv.append("note")
-				s.msg = "你从过去的书桌上拿起一张纸条：『保险箱 0923』。"
-			elif era == "past":
-				s.msg = "过去的书桌上只剩一杯凉掉的茶。"
+				s.msg = e.hint
+		"cache", "clue":
+			if s.clues.has(e.clue):
+				s.msg = "这里已经查过了。"
 			else:
-				s.msg = "书桌上空荡荡的，像是少了什么东西。"
+				s.msg = e.text + _add_clue(e.clue)
+		"container":
+			if e.get("taken", false):
+				s.msg = e.empty
+			else:
+				e.taken = true
+				s.msg = e.text + _add_clue(e.clue)
+		"compare":
+			s.seen[e.pair + "@" + era] = true
+			s.msg = e.text
+			var other := "past" if era == "present" else "present"
+			if s.seen.get(e.pair + "@" + other, false):
+				var clue := _compare_clue(e.pair)
+				if clue != "" and not s.clues.has(clue):
+					s.msg += "\n两相对照，少了一样东西。" + _add_clue(clue)
+			elif era == "present":
+				s.msg += "\n过去这里是什么样子？"
+			else:
+				s.msg += "\n现在这里还是这样吗？"
+		"candle":
+			if e.get("lit", false):
+				_push(e, dir)
+			elif s.tobacco <= 0:
+				_push(e, dir)
+			else:
+				_offer("candle", e.id, "一支没点的蜡烛。\n[1] 用烟斗点燃（烟丝 -1）    [2] 推开它    [Esc] 算了", dir)
+		"ice":
+			_push(e, dir)
+			if s.msg.begins_with("你在过去推动"):
+				s.msg += "冰块到天亮会化掉，除非放在够冷的地方。"
+		"crate":
+			if e.get("push", false):
+				_push(e, dir)
+			else:
+				s.msg = "推不动。"
 		"ashtray":
-			if e.used:
-				s.msg = "烟灰缸里已经没什么了。"
+			if e.get("baited", false):
+				s.msg = "烟灰缸里已经放了烟丝。"
+			elif s.tobacco <= 0:
+				s.msg = "一只空烟灰缸。要是有烟丝……"
 			else:
-				e.used = true
-				s.tobacco += 1
-				s.msg = "烟灰缸里有半截没抽完的雪茄。你把它拆开，装进了烟丝袋。（烟丝 +1）"
-		"safe":
-			if era == "past":
-				s.msg = "保险箱锁着。"
-			elif e.open:
-				s.msg = "保险箱已经空了。"
-			elif s.inv.has("note"):
-				e.open = true
-				_add_clue("will")
-				s.msg = "你输入 0923，保险箱开了。遗嘱上写着：管家一分钱也拿不到。——获得证据【遗嘱】"
-			else:
-				s.msg = "保险箱上了四位密码锁。"
-		"shelf":
-			if era == "present":
-				s.msg = "书架被钉死在地板上，纹丝不动。"
-			else:
-				var tgt: Vector2i = e.pos + dir
-				if not in_window(tgt):
-					s.msg = "烟雾外面是现在。过去的东西，推不出烟雾。"
-				elif tile_at("past", tgt) != Tile.FLOOR or ent_at("past", tgt) != null:
-					s.msg = "推不动，那边被挡住了。"
-				else:
-					e.pos = tgt
-					ent("shelf_now").pos = tgt
-					s.msg = "你在过去推开了书架。现在的它，也会停在这个位置。"
-		"cache":
-			if not e.open:
-				e.open = true
-				_add_clue("knife")
-				s.msg = "书架原来的位置下有个暗格，里面藏着一把带血的拆信刀。——获得证据【凶器】"
-			else:
-				s.msg = "暗格已经空了。"
-		"tin":
-			e.gone = true
-			s.tobacco += 1
-			s.msg = "密室角落里有一罐烟丝。（烟丝 +1）"
+				_offer("bait", e.id, "一只空烟灰缸，就在过道边上。\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
+		"static":
+			s.msg = e.get("past_text", e.text) if past else e.text
+		_:
+			s.msg = ""
+
+
+func _talk(e: Dictionary, past: bool) -> void:
+	if past:
+		if e.has("gift") and not s.flags.get(e.gift.flag, false):
+			if s.tobacco > 0:
+				_offer("gift", e.id, e.gift.ask + "\n[1] 给一撮（烟丝 -1）    [Esc] 算了")
+				return
+		s.msg = e.say
+		return
+	# 现在的人
+	if e.has("src"):
+		var w: Dictionary = e.get("witness", {})
+		if not w.is_empty() and d.saw.get(e.src, {}).has(w.of):
+			s.msg = w.text + _add_clue(w.clue)
+		else:
+			s.msg = e.say
+		return
+	if e.has("flag") and s.flags.get(e.flag.name, false):
+		s.msg = e.flag.text + _add_clue(e.flag.clue)
+		return
+	if e.has("lie") and s.cloud and in_window(ent(e.lie.vs).pos):
+		s.msg = e.lie.text + _add_clue(e.lie.clue)
+		return
+	s.msg = e.say
+
+
+func _compare_clue(pair: String) -> String:
+	# 对照的证物：取这一关"凶器"类里第一个还没拿到的
+	for cat in L.categories:
+		if cat[0] == "weapon":
+			return cat[2][0]
+	return ""
+
+
+func _cat_list(have: bool) -> String:
+	var names: Array = []
+	for i in L.categories.size():
+		if has_category(i) == have:
+			names.append(L.categories[i][1])
+	return "、".join(names)

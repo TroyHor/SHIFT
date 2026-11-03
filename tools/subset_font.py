@@ -11,7 +11,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "fonts", "NotoSansSC-Subset.ttf")
-EXTRA = "✓□·…—『』【】（）：，。？！、×"
+EXTRA = "↑↓✓□·…—『』【】（）：，。？！、×"
 
 
 def main() -> None:

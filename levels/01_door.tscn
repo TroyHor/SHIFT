@@ -1,20 +1,22 @@
 [gd_scene format=4]
 
-[ext_resource type="Script" path="res://scripts/level_def.gd" id="1_unal0"]
-[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_x4lfd"]
-[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_qdxs4"]
-[ext_resource type="Script" path="res://scripts/level_later.gd" id="4_ltr7q"]
-[ext_resource type="Script" path="res://scripts/level_ent.gd" id="5_tkgxt"]
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/level_later.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="4"]
 
 [node name="Intro1" type="Node2D" unique_id=1877835049]
-script = ExtResource("1_unal0")
+script = ExtResource("1")
 title = "序章一 · 砌死的门"
 theme = "门被砌死了。可那天晚上，它还开着。"
 intro = "当铺的后屋昨夜失窃。今早，漆匠受雇把后屋的门砌死了。"
 past_label = "昨夜 23:00"
 present_label = "今早 8:00"
-tobacco = 2
+tobacco = 1
+style = 0
 presence_clues = PackedStringArray("glove")
+weapon_clues = PackedStringArray()
+motive_clues = PackedStringArray()
 clue_names = {
 "glove": "沾红漆的手套"
 }
@@ -25,64 +27,300 @@ lose_text = "当铺老板气得发抖。漆匠收拾好工具，走了。"
 
 [node name="Map" type="TileMapLayer" parent="." unique_id=1567269852]
 tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAMAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAABAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAMAAEAAAABAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAABAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAABAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAMAAMAAAABAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAABAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAMAAQAAAABAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAMAAUAAAABAAAAAAAAAAYAAAABAAAAAAABAAYAAAABAAAAAAACAAYAAAABAAAAAAADAAYAAAABAAAAAAAEAAYAAAABAAAAAAAFAAYAAAABAAAAAAAGAAYAAAABAAAAAAAHAAYAAAABAAAAAAAIAAYAAAABAAAAAAAJAAYAAAABAAAAAAAKAAYAAAABAAAAAAALAAYAAAABAAAAAAAMAAYAAAABAAAAAAA=")
-tile_set = ExtResource("2_x4lfd")
 
 [node name="Start" type="Node2D" parent="." unique_id=279437142]
 position = Vector2(64, 96)
-script = ExtResource("3_qdxs4")
+script = ExtResource("2")
 what = "start"
 
 [node name="Later" type="Node2D" parent="." unique_id=2082527750]
 
 [node name="Brick" type="Node2D" parent="Later" unique_id=917932139]
 position = Vector2(192, 96)
-script = ExtResource("4_ltr7q")
+script = ExtResource("3")
+kind = "brick"
 display_name = "砖墙"
 text = "门洞用新砖砌死了，砖缝里沾着红漆。"
+by = ""
 
 [node name="Ents" type="Node2D" parent="." unique_id=171416907]
 
 [node name="inspector" type="Node2D" parent="Ents" unique_id=1207110770]
 position = Vector2(32, 32)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
 kind = "inspector"
 era = "present"
+display_name = ""
 label = "警"
+sprite = ""
+text = ""
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
 
 [node name="counter" type="Node2D" parent="Ents" unique_id=265792958]
 position = Vector2(96, 160)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
+kind = "static"
+era = "both"
+display_name = ""
 label = "柜"
 sprite = "desk"
 text = "当铺的柜台，账本摊开着。"
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
 
 [node name="crates" type="Node2D" parent="Ents" unique_id=1979029013]
 position = Vector2(32, 160)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
+kind = "static"
+era = "both"
+display_name = ""
 label = "杂"
+sprite = ""
 text = "等着赎回的旧物，堆了一墙角。"
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
 
 [node name="safe" type="Node2D" parent="Ents" unique_id=363974912]
 position = Vector2(320, 32)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
+kind = "static"
+era = "both"
+display_name = ""
 label = "箱"
 sprite = "safe"
 text = "保险柜开着，里面空了。"
 past_text = "保险柜锁得好好的。"
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
 
 [node name="glove" type="Node2D" parent="Ents" unique_id=1602827180]
 position = Vector2(288, 128)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
 kind = "clue"
 era = "present"
+display_name = ""
 label = "套"
 sprite = "glove"
 text = "保险柜前掉着一只手套，指尖沾着红漆。"
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
 clue = "glove"
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
 
 [node name="shelf" type="Node2D" parent="Ents" unique_id=244069556]
 position = Vector2(352, 160)
-script = ExtResource("5_tkgxt")
+script = ExtResource("4")
+kind = "static"
+era = "both"
+display_name = ""
 label = "架"
 sprite = "bookshelf"
 text = "货架上摆满了当来的物件。"
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 0
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = ""
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=2021685998]
+position = Vector2(288, 160)
+script = ExtResource("4")
+kind = "source"
+era = "present"
+display_name = "烟丝罐"
+label = ""
+sprite = ""
+text = "罐子里还有一撮烟丝。"
+past_text = ""
+now_text = ""
+say = ""
+hint = ""
+ask = ""
+empty = ""
+amount = 1
+clue = ""
+pair = ""
+push = false
+persist = false
+flammable = false
+erases = PackedStringArray()
+model = "tin"
+small = false
+smoker = false
+delay = 0
+gift_flag = ""
+gift_ask = ""
+gift_done = ""
+lie_vs = ""
+lie_clue = ""
+lie_text = ""
+flag_name = ""
+flag_clue = ""
+flag_text = ""
+now_say = ""
+witness_of = ""
+witness_clue = ""
+witness_text = ""

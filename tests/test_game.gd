@@ -33,6 +33,7 @@ func _init() -> void:
 	test_onlookers()
 	test_puff_squeezes_you_out()
 	test_level_editor_doc()
+	test_editor_keeps_tileset()
 	print("ALL TESTS PASSED" if failures == 0 else "%d FAILURE(S)" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -517,3 +518,16 @@ func test_level_editor_doc() -> void:
 	check(bl.map.size() == 8 and bl.ents.size() == 1 and bl.ents[0].kind == "inspector", "editor: blank level has walls and an inspector")
 	doc.close()
 	blank.close()
+
+
+func test_editor_keeps_tileset() -> void:
+	# 存档必须把地图的瓦片集写成对 levels/tiles.tres 的引用
+	var doc := LevelDoc.open("res://levels/03_push.tscn")
+	doc.map().tile_set = TileSet.new()  # 模拟导出版里读进来、没带路径的瓦片集
+	doc.file_name = "79_tiles.tscn"
+	DirAccess.make_dir_recursive_absolute("user://editor_test/")
+	var path := doc.save("user://editor_test/")
+	var txt := FileAccess.get_file_as_string(path)
+	check(txt.contains('path="res://levels/tiles.tres"') and txt.contains("tile_set = ExtResource"), "editor: tileset saved as a reference")
+	DirAccess.remove_absolute(path)
+	doc.close()

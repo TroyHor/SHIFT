@@ -40,6 +40,7 @@ var dirty := false
 static func open(path: String) -> LevelDoc:
 	var doc := LevelDoc.new()
 	doc.root = Levels.load_scene(path).instantiate()
+	doc._fix_tiles()
 	doc.file_name = path.get_file()
 	doc._opened_as = doc.file_name
 	return doc
@@ -118,7 +119,17 @@ func _own(n: Node) -> void:
 		_own(c)
 
 
+## 地图的瓦片集要指向 levels/tiles.tres 这个文件，存档时才会写成引用；
+## 导出版里读进来的瓦片集可能没带文件路径，存下来就丢了（Godot 里打开会看不到地图）
+func _fix_tiles() -> void:
+	var ts: TileSet = load(TILES_RES)
+	var m := root.get_node_or_null("Map") as TileMapLayer
+	if m != null and m.tile_set != ts:
+		m.tile_set = ts
+
+
 func _pack() -> PackedScene:
+	_fix_tiles()
 	_own(root)
 	var ps := PackedScene.new()
 	ps.pack(root)

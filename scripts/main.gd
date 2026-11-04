@@ -1,15 +1,13 @@
 extends Node2D
-## 画面与输入。全部程序化绘制（见 art.gd），不依赖贴图。
-## 图层：0 世界（地面、物件、人物）→ 1 光影（台灯光圈、暗角、胶片颗粒）→ 2 界面。
+## 画面与输入。世界是 3D 俯视角（见 board3d.gd），界面仍是 2D，全部程序化绘制，不依赖贴图。
+## 图层：3D 世界 → 0 名牌等跟着世界走的标注 → 1 烟雾颗粒、暗角、胶片颗粒 → 2 界面。
 
 const GameLogic := preload("res://scripts/game.gd")
 const FONT := preload("res://assets/fonts/NotoSansSC-Subset.ttf")
 const SERIF := preload("res://assets/fonts/NotoSerifSC-Subset.ttf")
 
-## 棋盘区域：地图按大小缩放后居中放在这里
+## 棋盘区域：3D 镜头把整张地图放进这里
 const BOARD := Rect2(48, 76, 864, 470)
-var TS := 48
-var ORIGIN := Vector2(48, 76)
 
 const C_BG := Color("#08090d")
 const C_TEXT := Color("#e8e4da")
@@ -19,14 +17,10 @@ const C_RED := Color("#c9533b")
 const C_INK := Color("#2a2018")
 const C_PAPER := Color("#e9dfc8")
 
+## 全屏：暗角和胶片颗粒
 const LIGHT_SHADER := """
 shader_type canvas_item;
 uniform vec2 view = vec2(960.0, 640.0);
-uniform vec4 board = vec4(48.0, 76.0, 864.0, 470.0);
-uniform vec2 lamp = vec2(480.0, 320.0);
-uniform float lamp_r = 240.0;
-uniform vec4 smoke = vec4(0.0);
-uniform float density = 0.0;
 uniform float time_s = 0.0;
 uniform float title = 0.0;
 
@@ -34,28 +28,30 @@ float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545
 
 void fragment() {
 	vec2 p = UV * view;
-	vec3 col = vec3(0.01, 0.02, 0.05);
-	float a = 0.0;
-	bool inb = p.x > board.x && p.y > board.y && p.x < board.x + board.z && p.y < board.y + board.w;
-	if (inb && title < 0.5) {
-		float l = 1.0 - smoothstep(lamp_r * 0.2, lamp_r, distance(p, lamp));
-		a = mix(0.62, 0.0, l);
-	}
-	bool ins = smoke.z > 0.0 && p.x > smoke.x && p.y > smoke.y && p.x < smoke.x + smoke.z && p.y < smoke.y + smoke.w;
-	if (ins) {
-		vec2 sp = (p - smoke.xy) / smoke.zw;
-		float g = hash(floor(p / 2.0) + floor(time_s * 18.0)) - 0.5;
-		float scratch = step(0.993, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
-		float wv = smoothstep(0.25, 0.75, length(sp - 0.5));
-		col = mix(vec3(0.22, 0.12, 0.04), vec3(0.95, 0.88, 0.7), scratch);
-		a = 0.04 + abs(g) * 0.16 * (0.4 + density) + wv * 0.32 + scratch * 0.35;
-	}
 	vec2 q = UV - 0.5;
-	float vig = smoothstep(0.42, 0.9, length(q * vec2(1.0, 1.3)));
-	if (!ins) { a = max(a, vig * 0.8); }
+	float vig = smoothstep(0.38, 0.9, length(q * vec2(1.0, 1.3)));
+	float a = vig * (0.85 - title * 0.15);
 	float gr = hash(floor(p / 2.0) + floor(time_s * 24.0)) - 0.5;
 	a = clamp(a + gr * 0.05, 0.0, 1.0);
-	COLOR = vec4(col, a);
+	COLOR = vec4(0.01, 0.02, 0.05, a);
+}
+"""
+
+## 烟雾窗口：老胶片的颗粒和划痕，只盖在 3x3 上
+const SMOKE_SHADER := """
+shader_type canvas_item;
+uniform float density = 0.0;
+uniform float time_s = 0.0;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+
+void fragment() {
+	vec2 p = FRAGCOORD.xy;
+	float g = hash(floor(p / 2.0) + floor(time_s * 18.0)) - 0.5;
+	float scratch = step(0.993, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
+	float wv = smoothstep(0.3, 0.75, length(UV - 0.5));
+	vec3 col = mix(vec3(0.22, 0.12, 0.04), vec3(0.95, 0.88, 0.7), scratch);
+	COLOR = vec4(col, 0.03 + abs(g) * 0.14 * (0.4 + density) + wv * 0.2 + scratch * 0.3);
 }
 """
 
@@ -68,13 +64,27 @@ var title_pick := 0
 var ui: Node2D
 var light: ColorRect
 var light_mat: ShaderMaterial
+var smoke_fx: Node2D
+var smoke_mat: ShaderMaterial
+var world: Board3D
 
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(C_BG)
+	world = Board3D.new()
+	add_child(world)
+	world.setup(game, BOARD)
+	world.visible = false
 	var l1 := CanvasLayer.new()
 	l1.layer = 1
 	add_child(l1)
+	smoke_fx = Node2D.new()
+	smoke_mat = ShaderMaterial.new()
+	smoke_mat.shader = Shader.new()
+	smoke_mat.shader.code = SMOKE_SHADER
+	smoke_fx.material = smoke_mat
+	smoke_fx.draw.connect(_draw_smoke_fx)
+	l1.add_child(smoke_fx)
 	light = ColorRect.new()
 	light.size = Vector2(960, 640)
 	light.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -102,6 +112,7 @@ func _process(delta: float) -> void:
 	t += delta
 	queue_redraw()
 	ui.queue_redraw()
+	smoke_fx.queue_redraw()
 	_update_light()
 
 
@@ -146,31 +157,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			if game.s.mode == "choice":
 				game.cancel()
 			else:
-				title = true
+				_to_title()
 		KEY_ENTER, KEY_KP_ENTER:
 			if game.s.mode == "end":
 				if game.s.outcome == "win" and game.level_idx < Levels.count() - 1:
 					_start(game.level_idx + 1)
 				else:
-					title = true
+					_to_title()
 		_:
 			return
 	get_viewport().set_input_as_handled()
+	if not title:
+		world.refresh()
 
 
 func _start(idx: int) -> void:
 	game.load_level(idx)
 	title_pick = idx
 	title = false
+	world.visible = true
+	world.refresh()
 
 
-func _cell(p: Vector2i) -> Rect2:
-	return Rect2(ORIGIN + Vector2(p) * TS, Vector2(TS, TS))
-
-
-func _layout() -> void:
-	TS = int(floor(minf(BOARD.size.x / game.W, BOARD.size.y / game.H)))
-	ORIGIN = BOARD.position + (BOARD.size - Vector2(game.W, game.H) * TS) / 2
+func _to_title() -> void:
+	title = true
+	world.visible = false
 
 
 ## 当前画在哪一层（世界或界面），文字等辅助函数都画到这里
@@ -182,18 +193,8 @@ func _draw() -> void:
 	if title:
 		_draw_title()
 		return
-	_layout()
-	_draw_frame()
-	_draw_board()
-	_draw_later()
-	_draw_routes()
-	var ents: Array = game.visible_ents()
-	for e in ents:
-		_draw_ent(e)
-	_draw_anchors()
-	_draw_player()
-	_draw_tags(ents)
-	_draw_smoke()
+	_draw_tags()
+	_draw_density()
 
 
 func _draw_ui() -> void:
@@ -208,22 +209,10 @@ func _draw_ui() -> void:
 
 func _update_light() -> void:
 	light_mat.set_shader_parameter("time_s", t)
-	if title:
-		light_mat.set_shader_parameter("title", 1.0)
-		light_mat.set_shader_parameter("smoke", Vector4.ZERO)
-		return
-	light_mat.set_shader_parameter("title", 0.0)
-	var bw := Vector2(game.W, game.H) * TS
-	light_mat.set_shader_parameter("board", Vector4(ORIGIN.x, ORIGIN.y, bw.x, bw.y))
-	light_mat.set_shader_parameter("lamp", _cell(game.s.pos).get_center())
-	light_mat.set_shader_parameter("lamp_r", TS * 7.5)
-	if game.s.cloud:
-		var c: Vector2i = game.s.center
-		var o := ORIGIN + Vector2(c - Vector2i.ONE) * TS
-		light_mat.set_shader_parameter("smoke", Vector4(o.x, o.y, TS * 3, TS * 3))
-		light_mat.set_shader_parameter("density", float(game.s.turns) / Game.SMOKE_TURNS)
-	else:
-		light_mat.set_shader_parameter("smoke", Vector4.ZERO)
+	light_mat.set_shader_parameter("title", 1.0 if title else 0.0)
+	smoke_mat.set_shader_parameter("time_s", t)
+	if not title and game.s.cloud:
+		smoke_mat.set_shader_parameter("density", float(game.s.turns) / Game.SMOKE_TURNS)
 
 
 # ---------------------------------------------------------------- 标题
@@ -289,175 +278,56 @@ func _draw_title() -> void:
 	_text_c("↑↓ 选择   Enter 开始   数字键直接进入", Vector2(650, 600), 13, C_DIM)
 
 
-# ---------------------------------------------------------------- 世界
+# ---------------------------------------------------------------- 世界上的标注
 
-func _draw_frame() -> void:
-	var r := Rect2(ORIGIN, Vector2(game.W, game.H) * TS)
-	draw_rect(r.grow(10), Color("#120f0b"))
-	draw_rect(r.grow(10), Color(C_ACCENT, 0.35), false, 1.0)
-	draw_rect(r.grow(5), Color(C_ACCENT, 0.18), false, 1.0)
-
-
-func _wall(p: Vector2i) -> bool:
-	if p.x < 0 or p.y < 0 or p.x >= game.W or p.y >= game.H:
-		return true
-	return game.tile_at(p) == Game.Tile.WALL
+## 烟雾窗口的四个角在屏幕上的位置
+func _window_corners() -> PackedVector2Array:
+	var c := Board3D.at(game.s.center)
+	var pts := PackedVector2Array()
+	for o in [Vector3(-1.5, 0, -1.5), Vector3(1.5, 0, -1.5), Vector3(1.5, 0, 1.5), Vector3(-1.5, 0, 1.5)]:
+		pts.append(world.screen_v(c + o))
+	return pts
 
 
-func _draw_board() -> void:
-	var th: Dictionary = Art.THEMES[clampi(int(game.L.get("style", 0)), 0, Art.THEMES.size() - 1)]
-	var cold: Array = game.L.cold
-	for y in game.H:
-		for x in game.W:
-			var p := Vector2i(x, y)
-			var past: bool = game.in_window(p)
-			var r := _cell(p)
-			if _wall(p):
-				Art.wall_tile(self, r, th, past, not _wall(p + Vector2i.DOWN), not _wall(p + Vector2i.LEFT), not _wall(p + Vector2i.RIGHT))
-				continue
-			# 地图里 "," 是室外地面，"." 是室内地面
-			var kind: String = th.ring if String(game.L.map[y])[x] == "," else th.core
-			Art.floor_tile(self, r, p, kind, past, cold.has(p))
-			if _wall(p + Vector2i.UP):
-				Art.wall_shadow(self, r)
-			# 门洞：墙线上的单格缺口（排除一格宽的走廊）
-			var L := p + Vector2i.LEFT
-			var R := p + Vector2i.RIGHT
-			var U := p + Vector2i.UP
-			var D := p + Vector2i.DOWN
-			if _wall(L) and _wall(R) and not _wall(U) and not _wall(D) and not _wall(L + Vector2i.UP) and not _wall(L + Vector2i.DOWN):
-				Art.doorway(self, r, false, past)
-			elif _wall(U) and _wall(D) and not _wall(L) and not _wall(R) and not _wall(U + Vector2i.LEFT) and not _wall(U + Vector2i.RIGHT):
-				Art.doorway(self, r, true, past)
+func _draw_smoke_fx() -> void:
+	if title or not game.s.cloud:
+		return
+	var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
+	smoke_fx.draw_polygon(_window_corners(), PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]), uvs)
 
 
-func _draw_later() -> void:
-	for lt in game.d.later_active:
-		if game.in_window(lt.pos):
-			continue
-		Art.later(self, _cell(lt.pos), lt.kind)
-
-
-func _draw_ent(e: Dictionary) -> void:
-	var done: bool = (e.kind in ["cache", "clue"] and game.s.clues.has(e.get("clue", ""))) \
-		or (e.kind == "container" and e.get("taken", false))
-	Art.entity(self, _cell(e.pos), e, game.in_window(e.pos), t, done)
-
-
-## 烟丝锚点：所有烟丝来源用同一个模型（烟丝罐）。
-## 当前时代拿得到的画实体；另一个时代的画成虚影，让玩家提前规划路线。
-## 同一格两个时代都有东西时，先画现在的，现在的没了才露出过去的虚影。
-func _draw_anchors() -> void:
-	for e in game.anchors():
-		var shown: bool = game.in_window(e.pos) == (e.era == "past")
-		if shown:
-			continue  # 实体已经由 _draw_ent 画出
-		var other: Array = game.present_ents() if e.era == "past" else game.past_ents()
-		var covered := false
-		for o in other:
-			if o.pos == e.pos and o.id != e.id:
-				covered = true
-				break
-		if covered:
-			continue
-		var pulse := 0.5 + 0.5 * sin(t * 2.0)
-		Art.tin(self, _cell(e.pos), 0.3 + 0.15 * pulse, false, t)
-
-
-## 烟雾里能看到的人，画出他们接下来要走的路（一串脚印）
-func _draw_routes() -> void:
-	for e in game.past_ents():
-		if e.kind != "npc" or not e.has("route") or not game.in_window(e.pos):
-			continue
-		var path: Array = game.route_of(e.id)
-		var steps := 0
-		for i in range(1, path.size()):
-			var a: Vector2i = path[i - 1]
-			var b: Vector2i = path[i]
-			if a == b:
-				continue
-			steps += 1
-			var ca := _cell(a).get_center()
-			var cb := _cell(b).get_center()
-			var dir := (cb - ca).normalized()
-			var side := Vector2(-dir.y, dir.x) * TS * 0.13 * (1.0 if steps % 2 == 0 else -1.0)
-			var k := fposmod(t * 1.2 - steps * 0.1, 1.0)
-			var col := Color(C_ACCENT, 0.35 + 0.55 * k)
-			for f in [0.25, 0.75]:
-				draw_set_transform(ca.lerp(cb, f) + side * (1.0 if f < 0.5 else -1.0), dir.angle(), Vector2.ONE)
-				Art.ellipse(self, Vector2.ZERO, TS * 0.11, TS * 0.06, col)
-				draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-		var end := _cell(path[path.size() - 1]).get_center()
-		var s := TS * 0.18
-		draw_line(end - Vector2(s, s), end + Vector2(s, s), C_ACCENT, 2.0)
-		draw_line(end - Vector2(s, -s), end + Vector2(s, -s), C_ACCENT, 2.0)
-
-
-func _draw_player() -> void:
-	var s: Dictionary = game.s
-	var r := _cell(s.pos)
-	var past: bool = game.in_window(s.pos)
-	var u := TS / 32.0
-	# 脚下一圈金色光晕，让玩家一眼找到侦探
-	var pulse := 0.5 + 0.5 * sin(t * 3.0)
-	Art.ellipse(self, r.get_center() + Vector2(0, 9) * u, 14 * u, 6 * u, Color(C_ACCENT, 0.18 + 0.12 * pulse))
-	draw_arc(r.get_center() + Vector2(0, 2) * u, 15 * u, 0, TAU, 28, Color(C_ACCENT, 0.35 + 0.3 * pulse), maxf(1.0, u * 1.2))
-	Art.person(self, r, "detective", past, t, s.tobacco > 0)
-	var bowl := r.get_center() + Vector2(10, -2) * u
-	if s.tobacco > 0:
-		for i in 4:
-			var k := fposmod(t * 0.6 + i * 0.25, 1.0)
-			var p := bowl + Vector2(sin(t * 2.0 + i * 1.7) * 3 * u * k, -k * TS * 0.9)
-			draw_circle(p, (1.5 + k * 4.0) * u, Color(0.9, 0.88, 0.82, 0.45 * (1.0 - k)))
-
-
-func _draw_tags(ents: Array) -> void:
+## 侦探身边两格以内的人，头顶显示名牌
+func _draw_tags() -> void:
 	var me: Vector2i = game.s.pos
-	for e in ents:
+	for e in game.visible_ents():
 		if e.kind not in ["npc", "inspector"]:
 			continue
 		var dp: Vector2i = e.pos - me
 		if maxi(absi(dp.x), absi(dp.y)) > 2:
 			continue
-		Art.name_tag(self, _cell(e.pos), String(e.get("name", "警探")))
+		var c := world.screen(e.pos, 0.98)
+		var s := String(e.get("name", "警探"))
+		var size := 12
+		var w := FONT.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 10
+		var r := Rect2(c - Vector2(w / 2, 9), Vector2(w, 18))
+		draw_rect(r, Color(0.05, 0.05, 0.07, 0.82))
+		draw_rect(r, Color(C_ACCENT, 0.5), false, 1.0)
+		Art.text_center(self, FONT, s, c, size, Color("#efe6d2"))
 
 
-func _draw_smoke() -> void:
+## 烟雾浓度：窗口上沿一排小点，每个行动用掉一个
+func _draw_density() -> void:
 	var s: Dictionary = game.s
 	if not s.cloud:
 		return
-	var c: Vector2i = s.center
-	var rect := Rect2(ORIGIN + Vector2(c - Vector2i.ONE) * TS, Vector2(TS * 3, TS * 3))
-	var density := float(s.turns) / Game.SMOKE_TURNS
-	draw_rect(rect, Color(1.0, 0.85, 0.6, 0.05))
-	# 烟雾边缘：沿四边翻滚的烟团，越淡烟团越小
-	var per := 9
-	for side in 4:
-		for i in per:
-			var k := (i + 0.5) / per
-			var a := t * 0.7 + i * 1.3 + side * 2.1
-			var pos: Vector2
-			match side:
-				0:
-					pos = rect.position + Vector2(rect.size.x * k, 0)
-				1:
-					pos = Vector2(rect.end.x, rect.position.y + rect.size.y * k)
-				2:
-					pos = Vector2(rect.end.x - rect.size.x * k, rect.end.y)
-				_:
-					pos = Vector2(rect.position.x, rect.end.y - rect.size.y * k)
-			pos += Vector2(sin(a), cos(a * 1.3)) * TS * 0.08
-			var rad := TS * (0.17 + 0.06 * sin(a * 0.8)) * (0.55 + 0.45 * density)
-			draw_circle(pos, rad * 1.6, Color(0.9, 0.87, 0.8, 0.08 * (0.5 + density)))
-			draw_circle(pos, rad, Color(0.96, 0.93, 0.86, 0.2 * (0.4 + density)))
-	# 浓度：上沿一排小点，每个行动用掉一个
+	var c := Board3D.at(s.center)
 	for i in Game.SMOKE_TURNS:
-		var dp := rect.position + Vector2(rect.size.x * (i + 0.5) / Game.SMOKE_TURNS, -TS * 0.3)
-		var rr := maxf(2.0, TS * 0.07)
+		var x := -1.4 + 2.8 * (i + 0.5) / Game.SMOKE_TURNS
+		var dp := world.screen_v(c + Vector3(x, 0.95, -1.5))
 		if i < s.turns:
-			draw_circle(dp, rr, Color(0.97, 0.93, 0.85, 0.95))
+			draw_circle(dp, 3.0, Color(0.97, 0.93, 0.85, 0.95))
 		else:
-			draw_arc(dp, rr, 0, TAU, 10, Color(1, 1, 1, 0.3), 1.0)
+			draw_arc(dp, 3.0, 0, TAU, 10, Color(1, 1, 1, 0.3), 1.0)
 
 
 # ---------------------------------------------------------------- 界面

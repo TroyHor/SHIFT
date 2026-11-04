@@ -71,6 +71,7 @@ var world: Board3D
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(C_BG)
+	Art.add_font_fallback()
 	world = Board3D.new()
 	add_child(world)
 	world.setup(game, BOARD)
@@ -255,27 +256,42 @@ func _draw_title() -> void:
 	_text_c("SHIFT", Vector2(650, 110), 64, C_ACCENT, SERIF)
 	_text_c("烟 斗 侦 探", Vector2(650, 168), 30, Color("#efe6d2"), SERIF)
 	_text_c("按 Shift 吐一口烟，烟雾里是案发当晚。", Vector2(650, 206), 14, C_DIM)
-	# 档案夹
+	# 档案夹：关卡少时每个一张大卡片，多时排成一列标签，选中的那张展开
 	var n := Levels.count()
-	var step := minf(96.0, 330.0 / maxf(1.0, n))
-	for i in n:
-		var lv: Dictionary = Levels.info(i)
-		var sel := i == title_pick
-		var r := Rect2(Vector2(430 if sel else 446, 250 + i * step), Vector2(460, minf(80.0, step - 14)))
-		draw_rect(Rect2(r.position + Vector2(4, 5), r.size), Color(0, 0, 0, 0.5))
-		var folder := Color("#d8c08a") if sel else Color("#7a6a4c")
-		draw_rect(Rect2(r.position + Vector2(16, -10), Vector2(110, 12)), folder.darkened(0.08))
-		draw_rect(r, folder)
-		draw_rect(r.grow(-4), Color(C_INK, 0.25), false, 1)
-		_text("案卷 %d" % (i + 1), r.position + Vector2(24, 0), 11, Color(C_INK, 0.8))
-		_text(String(lv.title), r.position + Vector2(24, 34), 21, C_INK, SERIF)
-		_text(String(lv.theme), r.position + Vector2(24, 62), 13, Color(C_INK, 0.75))
-		if sel:
-			cv.draw_set_transform(r.position + Vector2(400, 42), -0.2, Vector2.ONE)
-			cv.draw_rect(Rect2(-34, -16, 68, 32), Color("#a8322a"), false, 2)
-			_text_c("调查", Vector2.ZERO, 16, Color("#a8322a"), SERIF)
-			cv.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	if n <= 4:
+		for i in n:
+			_folder(i, Rect2(Vector2(430 if i == title_pick else 446, 250 + i * 82), Vector2(460, 68)), true)
+	else:
+		var rows := mini(n, 7)
+		var first := clampi(title_pick - rows / 2, 0, n - rows)
+		var y := 236.0
+		for i in range(first, first + rows):
+			var sel := i == title_pick
+			var h := 66.0 if sel else 36.0
+			_folder(i, Rect2(Vector2(430 if sel else 446, y), Vector2(460, h)), sel)
+			y += h + 8
 	_text_c("↑↓ 选择   Enter 开始   数字键直接进入", Vector2(650, 600), 13, C_DIM)
+
+
+func _folder(i: int, r: Rect2, full: bool) -> void:
+	var lv: Dictionary = Levels.info(i)
+	var sel := i == title_pick
+	draw_rect(Rect2(r.position + Vector2(4, 5), r.size), Color(0, 0, 0, 0.5))
+	var folder := Color("#d8c08a") if sel else Color("#7a6a4c")
+	draw_rect(Rect2(r.position + Vector2(16, -8), Vector2(90, 10)), folder.darkened(0.08))
+	draw_rect(r, folder)
+	draw_rect(r.grow(-4), Color(C_INK, 0.25), false, 1)
+	_text("%d" % (i + 1), r.position + Vector2(14, 24), 13, Color(C_INK, 0.6))
+	if full:
+		_text(String(lv.title), r.position + Vector2(36, 30), 20, C_INK, SERIF)
+		_text(String(lv.theme), r.position + Vector2(36, 55), 13, Color(C_INK, 0.75))
+	else:
+		_text(String(lv.title), r.position + Vector2(36, 24), 15, Color(C_INK, 0.85), SERIF)
+	if sel:
+		cv.draw_set_transform(r.position + Vector2(408, r.size.y / 2), -0.2, Vector2.ONE)
+		cv.draw_rect(Rect2(-32, -15, 64, 30), Color("#a8322a"), false, 2)
+		_text_c("调查", Vector2.ZERO, 15, Color("#a8322a"), SERIF)
+		cv.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 
 
 # ---------------------------------------------------------------- 世界上的标注
@@ -363,7 +379,8 @@ func _draw_hud() -> void:
 		else:
 			now_n += 1
 			now_amt += a.amount
-	_text("烟丝锚点：现在 %d 处 +%d · 过去 %d 处 +%d" % [now_n, now_amt, past_n, past_amt], Vector2(330, 53), 12, Color(C_ACCENT, 0.8))
+	if now_n + past_n > 0:
+		_text("烟丝锚点：现在 %d 处 +%d · 过去 %d 处 +%d" % [now_n, now_amt, past_n, past_amt], Vector2(330, 53), 12, Color(C_ACCENT, 0.8))
 	# 右：三类证据的档案标签
 	var x := 612.0
 	for i in game.L.categories.size():

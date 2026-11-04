@@ -1,0 +1,88 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1_unal0"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_x4lfd"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_qdxs4"]
+[ext_resource type="Script" path="res://scripts/level_later.gd" id="4_ltr7q"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="5_tkgxt"]
+
+[node name="Intro1" type="Node2D" unique_id=1877835049]
+script = ExtResource("1_unal0")
+title = "序章一 · 砌死的门"
+theme = "门被砌死了。可那天晚上，它还开着。"
+intro = "当铺的后屋昨夜失窃。今早，漆匠受雇把后屋的门砌死了。"
+past_label = "昨夜 23:00"
+present_label = "今早 8:00"
+tobacco = 2
+presence_clues = PackedStringArray("glove")
+clue_names = {
+"glove": "沾红漆的手套"
+}
+suspects = PackedStringArray("当铺老板", "漆匠")
+culprit = 1
+win_text = "漆匠昨夜先溜进后屋偷走了钱，今早又借砌墙，把手套封在了里面。"
+lose_text = "当铺老板气得发抖。漆匠收拾好工具，走了。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=1567269852]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAMAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAABAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAMAAEAAAABAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAABAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAABAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAMAAMAAAABAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAABAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAMAAQAAAABAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAMAAUAAAABAAAAAAAAAAYAAAABAAAAAAABAAYAAAABAAAAAAACAAYAAAABAAAAAAADAAYAAAABAAAAAAAEAAYAAAABAAAAAAAFAAYAAAABAAAAAAAGAAYAAAABAAAAAAAHAAYAAAABAAAAAAAIAAYAAAABAAAAAAAJAAYAAAABAAAAAAAKAAYAAAABAAAAAAALAAYAAAABAAAAAAAMAAYAAAABAAAAAAA=")
+tile_set = ExtResource("2_x4lfd")
+
+[node name="Start" type="Node2D" parent="." unique_id=279437142]
+position = Vector2(64, 96)
+script = ExtResource("3_qdxs4")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=2082527750]
+
+[node name="Brick" type="Node2D" parent="Later" unique_id=917932139]
+position = Vector2(192, 96)
+script = ExtResource("4_ltr7q")
+display_name = "砖墙"
+text = "门洞用新砖砌死了，砖缝里沾着红漆。"
+
+[node name="Ents" type="Node2D" parent="." unique_id=171416907]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=1207110770]
+position = Vector2(32, 32)
+script = ExtResource("5_tkgxt")
+kind = "inspector"
+era = "present"
+label = "警"
+
+[node name="counter" type="Node2D" parent="Ents" unique_id=265792958]
+position = Vector2(96, 160)
+script = ExtResource("5_tkgxt")
+label = "柜"
+sprite = "desk"
+text = "当铺的柜台，账本摊开着。"
+
+[node name="crates" type="Node2D" parent="Ents" unique_id=1979029013]
+position = Vector2(32, 160)
+script = ExtResource("5_tkgxt")
+label = "杂"
+text = "等着赎回的旧物，堆了一墙角。"
+
+[node name="safe" type="Node2D" parent="Ents" unique_id=363974912]
+position = Vector2(320, 32)
+script = ExtResource("5_tkgxt")
+label = "箱"
+sprite = "safe"
+text = "保险柜开着，里面空了。"
+past_text = "保险柜锁得好好的。"
+
+[node name="glove" type="Node2D" parent="Ents" unique_id=1602827180]
+position = Vector2(288, 128)
+script = ExtResource("5_tkgxt")
+kind = "clue"
+era = "present"
+label = "套"
+sprite = "glove"
+text = "保险柜前掉着一只手套，指尖沾着红漆。"
+clue = "glove"
+
+[node name="shelf" type="Node2D" parent="Ents" unique_id=244069556]
+position = Vector2(352, 160)
+script = ExtResource("5_tkgxt")
+label = "架"
+sprite = "bookshelf"
+text = "货架上摆满了当来的物件。"

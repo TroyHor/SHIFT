@@ -783,6 +783,18 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 				var pu := _part(n, _quad(0.18), pm, Vector3(0, 0.2, 0))
 				pu.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				_bait_puffs.append([pu, pm])
+		"glove":
+			var gc := Color("#c8b48a").darkened(0.4 if done else 0.0)
+			_part(n, _box(Vector3(0.18, 0.05, 0.2)), _m(gc, 0.9), Vector3(0, 0.025, 0.04), Vector3(0, 0.4, 0))
+			for k in 4:
+				var fp := Vector3(-0.06 + k * 0.04, 0.02, -0.1).rotated(Vector3.UP, 0.4)
+				_part(n, _box(Vector3(0.03, 0.035, 0.1)), _m(gc, 0.9), fp, Vector3(0, 0.4, 0))
+				_part(n, _box(Vector3(0.032, 0.037, 0.03)), _m(Color("#a82a22"), 0.5), fp + Vector3(0, 0, -0.05).rotated(Vector3.UP, 0.4), Vector3(0, 0.4, 0))
+			_part(n, _box(Vector3(0.06, 0.035, 0.08)), _m(gc, 0.9), Vector3(0.1, 0.02, 0.06), Vector3(0, -0.3, 0))
+		"bottle":
+			_part(n, _cyl(0.07, 0.07, 0.3), _m(Color(0.22, 0.38, 0.24, 0.85), 0.1), Vector3(0, 0.07, 0), Vector3(0, 0, PI / 2 - 0.05))
+			_part(n, _cyl(0.025, 0.035, 0.1), _m(Color(0.22, 0.38, 0.24, 0.85), 0.1), Vector3(0.19, 0.07, 0), Vector3(0, 0, PI / 2))
+			_part(n, _cyl(0.072, 0.072, 0.08), _m(Color("#e8dcc0")), Vector3(-0.02, 0.07, 0), Vector3(0, 0, PI / 2 - 0.05))
 		_:
 			_part(n, _box(Vector3(0.7, 0.42, 0.7)), _m(Color("#6b5440")), Vector3(0, 0.21, 0))
 			var lb := Label3D.new()

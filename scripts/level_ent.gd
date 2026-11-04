@@ -22,7 +22,7 @@ const TILE := 32
 ## 没有专门画法时，方块上显示的字
 @export var label := ""
 ## 画法。留空则按 id 猜。人物：detective inspector butler maid cook clerk conductor passenger porter；
-## 物件：desk table chair crates plant horse snowman barrel cache cart bookshelf wardrobe safe rack candle logs book paper bed toolbox ice ashtray
+## 物件：desk table chair crates plant horse snowman barrel cache cart bookshelf wardrobe safe rack candle logs book paper bed toolbox ice ashtray glove bottle
 @export var sprite := "":
 	set(v):
 		sprite = v
@@ -89,6 +89,11 @@ const TILE := 32
 @export var witness_of := ""
 @export var witness_clue := ""
 @export_multiline var witness_text := ""
+
+
+func _ready() -> void:
+	if Engine.is_editor_hint():
+		Art.add_font_fallback()
 
 
 func _process(_delta: float) -> void:

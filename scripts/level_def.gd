@@ -30,7 +30,7 @@ const T_COLD := Vector2i(3, 0)
 @export_enum("书房", "旅馆", "列车") var style := 0
 
 @export_group("证据")
-## 每类填若干个证据 id，拿到其中一个就算这一类齐了
+## 每类填若干个证据 id，拿到其中一个就算这一类齐了；留空的类别这一关不需要
 @export var presence_clues: PackedStringArray
 @export var weapon_clues: PackedStringArray
 @export var motive_clues: PackedStringArray
@@ -106,15 +106,20 @@ func to_level() -> Dictionary:
 		"map": rows,
 		"cold": cold,
 		"later": later,
-		"categories": [
-			["presence", "在场", Array(presence_clues)],
-			["weapon", "凶器", Array(weapon_clues)],
-			["motive", "动机", Array(motive_clues)],
-		],
+		"categories": _categories(),
 		"clue_names": clue_names.duplicate(),
 		"accuse": {"options": Array(suspects), "answer": culprit, "win": win_text, "lose": lose_text},
 		"ents": ents,
 	}
+
+
+## 只列出填了证据的类别：引导关可以只要一类
+func _categories() -> Array:
+	var out: Array = []
+	for c in [["presence", "在场", presence_clues], ["weapon", "凶器", weapon_clues], ["motive", "动机", motive_clues]]:
+		if not c[2].is_empty():
+			out.append([c[0], c[1], Array(c[2])])
+	return out
 
 
 func _collect_ents(node: Node, out: Array) -> void:

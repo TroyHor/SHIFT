@@ -24,8 +24,26 @@ func _init() -> void:
 	test_push_out_of_window_blocked()
 	test_reality_pushes_back()
 	test_undo()
+	test_intro_order()
+	test_intro1_door()
+	test_intro2_ash()
+	test_intro3_push()
+	test_intro4_two()
 	print("ALL TESTS PASSED" if failures == 0 else "%d FAILURE(S)" % failures)
 	quit(1 if failures > 0 else 0)
+
+
+## 三个正式案件在关卡列表里的位置（前面还有引导关）
+func case_idx(n: int) -> int:
+	var i := Levels.index_of("res://levels/%d0_case%d.tscn" % [n, n])
+	check(i >= 0, "case %d scene exists" % n)
+	return i
+
+
+func level(file: String):
+	var i := Levels.index_of("res://levels/" + file)
+	check(i >= 0, "level %s exists" % file)
+	return GameLogic.new(i)
 
 
 func check(cond: bool, what: String) -> void:
@@ -98,7 +116,7 @@ const C1_SEALED := "UUUURRRS" + "RR" + "RRRUU" + "DDDDDLLS" + "DLU" + "RRUU" + "
 
 
 func test_case1_route_lie() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	walk(g, "UUURRRRURS")
 	check(g.s.cloud and g.s.tobacco == 1 and g.s.ash == 1, "c1 lie: puff costs a pinch and gives ash")
@@ -130,7 +148,7 @@ func test_case1_route_lie() -> void:
 
 
 func test_case1_route_fingerprint() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	walk(g, "UUURRRRRRRRRUUU")
 	check(g.s.tobacco == 3, "c1 print: ashtray first")
@@ -144,7 +162,7 @@ func test_case1_route_fingerprint() -> void:
 
 
 func test_case1_route_witness() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	walk(g, "UUURRRRURS" + "LU")
 	check(g.s.mode == "choice" and g.s.choice.type == "take", "c1 witness: jar asks first")
@@ -163,7 +181,7 @@ func test_case1_route_witness() -> void:
 
 
 func test_case1_taking_past_jar_erases_prints() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	walk(g, "UUURRRRURS" + "LU1" + "DL" + "RUU")
 	check(g.s.pos == lc(6, 2), "c1 jar: present jar never existed, walked onto its spot")
@@ -171,7 +189,7 @@ func test_case1_taking_past_jar_erases_prints() -> void:
 
 
 func test_case1_without_wardrobe_you_run_dry() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	walk(g, "UUURRRRURS" + "LDD" + "L" + "RRRRRRUUU" + "DDLLLDDD" + C1_SHELF + "UUUURRRS" + "RR" + "RRRUU")
 	# 不推衣橱，直接在密室里拿遗嘱
@@ -184,7 +202,7 @@ func test_case1_without_wardrobe_you_run_dry() -> void:
 
 
 func test_case1_pouch_shares_the_maid_window() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	c1_garden(g)
 	goto(g, lc(3, 4))
 	walk(g, "S" + "U1")
@@ -194,8 +212,8 @@ func test_case1_pouch_shares_the_maid_window() -> void:
 
 
 func test_anchors_visible() -> void:
-	for i in Levels.count():
-		var g = GameLogic.new(i)
+	for i in 3:
+		var g = GameLogic.new(case_idx(i + 1))
 		var past := 0
 		for a in g.anchors():
 			if a.era == "past":
@@ -208,7 +226,7 @@ func test_anchors_visible() -> void:
 # ---------------- 案件二 ----------------
 
 func test_case2_full() -> void:
-	var g = GameLogic.new(1)
+	var g = GameLogic.new(case_idx(2))
 	walk(g, "RRRRRURS" + "LU")
 	check(g.s.tobacco == 2, "c2: cigar box from the past kitchen")
 	walk(g, "RDD")
@@ -237,12 +255,12 @@ func test_case2_full() -> void:
 
 
 func test_case2_planks_without_ice() -> void:
-	var g = GameLogic.new(1)
+	var g = GameLogic.new(case_idx(2))
 	check(g.later_at(Vector2i(16, 4)) != null, "c2: cellar door nailed shut by default")
 
 
 func test_case2_ice_melts_only_outside_cellar() -> void:
-	var g = GameLogic.new(1)
+	var g = GameLogic.new(case_idx(2))
 	var ice_now := false
 	for e in g.present_ents():
 		if e.get("src", "") == "ice":
@@ -253,14 +271,14 @@ func test_case2_ice_melts_only_outside_cellar() -> void:
 # ---------------- 案件三 ----------------
 
 func test_case3_default_night() -> void:
-	var g = GameLogic.new(2)
+	var g = GameLogic.new(case_idx(3))
 	check(g.later_at(Vector2i(16, 7)) != null, "c3: conductor locks the C car door by default")
 	check(not g.d.saw.get("conductor", {}).has("porter"), "c3: nobody sees the porter by default")
 	check(not g.d.saw.get("passenger", {}).has("porter"), "c3: passenger sleeps by default")
 
 
 func test_case3_full() -> void:
-	var g = GameLogic.new(2)
+	var g = GameLogic.new(case_idx(3))
 	walk(g, "RRRRRRDDD" + "L")
 	check(g.s.seen.get("tools@present", false), "c3: looked at present toolbox")
 	walk(g, "US" + "DL")
@@ -279,7 +297,7 @@ func test_case3_full() -> void:
 
 
 func test_case3_bait_passenger() -> void:
-	var g = GameLogic.new(2)
+	var g = GameLogic.new(case_idx(3))
 	walk(g, "RRUS" + "U1")  # (5,4) 吐烟，窗口盖住 A 车厢的烟灰缸 (5,3)
 	check(g.ent("ashtray_a").get("baited", false), "c3 passenger: baited car A ashtray")
 	check(g.d.saw.get("passenger", {}).has("porter"), "c3 passenger: old man saw the porter")
@@ -289,7 +307,7 @@ func test_case3_bait_passenger() -> void:
 # ---------------- 通用规则 ----------------
 
 func test_push_out_of_window_blocked() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	walk(g, "UUURRRRRRDDD")  # (8,7)
 	walk(g, "S")  # 窗口 x7..9：书架往右推到 (10,7) 会出窗口（而且那里有茶车）
 	walk(g, "R")
@@ -297,7 +315,7 @@ func test_push_out_of_window_blocked() -> void:
 
 
 func test_reality_pushes_back() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	walk(g, "UUURRRRRRRRRUU")  # (11,2)
 	check(g.s.pos == lc(11, 2), "reality: at (11,2), got %s" % g.s.pos)
 	walk(g, "SDRLRLRL")
@@ -307,10 +325,94 @@ func test_reality_pushes_back() -> void:
 
 
 func test_undo() -> void:
-	var g = GameLogic.new(0)
+	var g = GameLogic.new(case_idx(1))
 	walk(g, "U")
 	walk(g, "S")
 	g.undo()
 	check(not g.s.cloud and g.s.tobacco == g.L.tobacco and g.s.ash == 0, "undo: puff")
 	g.undo()
 	check(g.s.pos == g.L.start, "undo: move")
+
+
+# ---------------- 引导关 ----------------
+
+func test_intro_order() -> void:
+	var p: Array = Levels.paths()
+	check(p.size() >= 7 and String(p[0]).ends_with("01_door.tscn") and String(p[4]).ends_with("10_case1.tscn"), "intro: four intro levels come before case 1")
+
+
+func accuse(g, answer: int) -> void:
+	var ip: Vector2i = g.ent("inspector").pos
+	for d in [[Vector2i.DOWN, "U"], [Vector2i.UP, "D"], [Vector2i.RIGHT, "L"], [Vector2i.LEFT, "R"]]:
+		if not g.solid("present", ip + d[0]):
+			goto(g, ip + d[0])
+			walk(g, d[1])
+			break
+	check(g.s.mode == "choice", "%s: inspector offers the accusation" % g.L.title)
+	g.choose(answer + 1)
+	check(g.s.outcome == "win", "%s: accusation wins" % g.L.title)
+
+
+## 一：只能吐烟穿过后来砌的墙，进去、出来各一口
+func test_intro1_door() -> void:
+	var g = level("01_door.tscn")
+	walk(g, "RRRR")
+	check(g.s.pos == Vector2i(5, 3), "intro1: brick stops you in the present")
+	walk(g, "S" + "RR")
+	check(g.s.pos == Vector2i(7, 3) and not g.s.cloud, "intro1: walked through in smoke and stepped out into the present")
+	walk(g, "RRD")
+	check(g.s.clues.has("glove"), "intro1: glove found")
+	goto(g, Vector2i(7, 3))
+	walk(g, "S" + "LL")
+	check(g.s.pos == Vector2i(5, 3) and g.s.tobacco == 0, "intro1: back out with the second pinch")
+	accuse(g, 1)
+
+
+## 二：开局没有烟丝；拿罐子、吐烟进门，烟灰拓指纹，再拿一罐出来
+func test_intro2_ash() -> void:
+	var g = level("02_ash.tscn")
+	walk(g, "R")
+	check(g.s.msg.find("用完") < 0, "intro2: no 'out of tobacco' nag while a tin is in reach")
+	walk(g, "U" + "U")
+	check(g.s.tobacco == 1, "intro2: took the tin")
+	goto(g, Vector2i(5, 3))
+	walk(g, "S" + "RR")
+	check(g.s.ash == 1 and g.s.pos == Vector2i(7, 3), "intro2: through the planks with one ash")
+	goto(g, Vector2i(10, 3))
+	walk(g, "U")
+	check(g.s.clues.has("print") and g.s.ash == 0, "intro2: ash lifts the print")
+	goto(g, Vector2i(10, 5))
+	walk(g, "R")
+	check(g.s.tobacco == 1, "intro2: second tin")
+	goto(g, Vector2i(7, 3))
+	walk(g, "S" + "LL")
+	accuse(g, 1)
+
+
+## 三：在烟雾里推衣橱，现在它也挪开了，底下的暗格露出来
+func test_intro3_push() -> void:
+	var g = level("03_push.tscn")
+	walk(g, "UU")
+	check(g.s.pos == Vector2i(5, 3), "intro3: wardrobe blocks in the present")
+	walk(g, "S" + "U")
+	check(g.ent("wardrobe").pos == Vector2i(5, 2), "intro3: cannot push it out of the smoke")
+	walk(g, "LUR")
+	check(g.ent("wardrobe").pos == Vector2i(6, 2), "intro3: pushed inside the smoke")
+	walk(g, "DDD")
+	check(not g.s.cloud, "intro3: out of the smoke")
+	goto(g, Vector2i(5, 3))
+	walk(g, "U")
+	check(g.s.clues.has("watch"), "intro3: cache revealed under the old spot")
+	accuse(g, 0)
+
+
+## 四：烟雾里看得见过去的园丁时，再问现在的园丁
+func test_intro4_two() -> void:
+	var g = level("04_two.tscn")
+	goto(g, Vector2i(7, 3))
+	walk(g, "R")
+	check(not g.s.clues.has("lie"), "intro4: without smoke he just repeats himself")
+	walk(g, "L")
+	walk(g, "S" + "R" + "R")
+	check(g.s.clues.has("lie"), "intro4: confronted with his past self")
+	accuse(g, 0)

@@ -32,7 +32,9 @@ def main() -> None:
     if len(sys.argv) not in (2, 3):
         sys.exit(__doc__)
     chars = set(chr(c) for c in range(0x20, 0x7F)) | set(EXTRA)
-    for path in glob.glob(os.path.join(ROOT, "scripts", "**", "*.gd"), recursive=True):
+    paths = glob.glob(os.path.join(ROOT, "scripts", "**", "*.gd"), recursive=True)
+    paths += glob.glob(os.path.join(ROOT, "levels", "**", "*.tscn"), recursive=True)
+    for path in paths:
         with open(path, encoding="utf-8") as f:
             chars |= set(f.read())
     chars.discard("\n")

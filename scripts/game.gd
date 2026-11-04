@@ -464,7 +464,7 @@ func _after_action() -> void:
 		s.mode = "play"
 		s.choice = {}
 	_derive()
-	if s.mode == "play" and s.tobacco == 0 and not s.cloud and not all_categories():
+	if s.mode == "play" and s.tobacco == 0 and not s.cloud and not all_categories() and not _present_source_left():
 		s.msg += "\n" + _stuck_msg()
 
 
@@ -490,6 +490,14 @@ func _nearest_free(from: Vector2i) -> Vector2i:
 				seen[n] = true
 				queue.append(n)
 	return L.start
+
+
+## 现在还拿得到的烟丝（过去的要先吐烟才拿得到，不算）
+func _present_source_left() -> bool:
+	for e in d.present:
+		if e.kind == "source":
+			return true
+	return false
 
 
 func _stuck_msg() -> String:

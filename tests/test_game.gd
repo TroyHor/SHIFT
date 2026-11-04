@@ -32,6 +32,7 @@ func _init() -> void:
 	test_blocking()
 	test_onlookers()
 	test_puff_squeezes_you_out()
+	test_level_editor_doc()
 	print("ALL TESTS PASSED" if failures == 0 else "%d FAILURE(S)" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -482,3 +483,37 @@ func test_puff_squeezes_you_out() -> void:
 	goto(g4, Vector2i(5, 3))
 	walk(g4, "S")
 	check(g4.s.pos == Vector2i(5, 3), "squeeze: people never push you out")
+
+
+func test_level_editor_doc() -> void:
+	# 游戏内编辑器改的是关卡场景本身：改完存下来，再读回来要一样
+	var doc := LevelDoc.open("res://levels/01_door.tscn")
+	var before: Dictionary = doc.to_level()
+	doc.snapshot()
+	doc.paint(Vector2i(2, 2), LevelDoc.T_WALL)
+	var e := doc.add_ent(LevelDoc.TEMPLATES[1][1], Vector2i(3, 3))
+	doc.add_marker(e, "route", Vector2i(4, 3))
+	doc.add_marker(e, "route", Vector2i(5, 3))
+	e.say = "我昨晚在这里。"
+	doc.move_to(doc.start(), Vector2i(1, 3))
+	var dir := "user://editor_test/"
+	DirAccess.make_dir_recursive_absolute(dir)
+	doc.file_name = "77_test.tscn"
+	var path := doc.save(dir)
+	check(path != "", "editor: saved")
+	var back: Dictionary = Levels.load_scene(path).instantiate().to_level()
+	check(String(back.map[2])[2] == "#", "editor: painted wall kept")
+	check(back.start == Vector2i(1, 3), "editor: start moved")
+	var added: Dictionary = back.ents.filter(func(x): return x.id == e.name)[0]
+	check(added.route == [Vector2i(4, 3), Vector2i(5, 3)] and added.say == "我昨晚在这里。", "editor: person with route and line kept")
+	var g = GameLogic.new(0)
+	g.load_data(back)
+	check(g.W == before.map[0].length(), "editor: saved level loads into the game")
+	doc.undo()
+	check(doc.to_level() == before, "editor: undo restores the level")
+	DirAccess.remove_absolute(path)
+	var blank := LevelDoc.blank("78_blank.tscn")
+	var bl: Dictionary = blank.to_level()
+	check(bl.map.size() == 8 and bl.ents.size() == 1 and bl.ents[0].kind == "inspector", "editor: blank level has walls and an inspector")
+	doc.close()
+	blank.close()

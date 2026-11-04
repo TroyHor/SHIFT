@@ -13,7 +13,19 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "fonts", "NotoSansSC-Subset.ttf")
 OUT_SERIF = os.path.join(ROOT, "assets", "fonts", "NotoSerifSC-Subset.ttf")
-EXTRA = "↑↓✓□·…—『』【】（）：，。？！、×"
+EXTRA = "↑↓✓□·…—『』【】（）：，。？！、×“”‘’；《》"
+
+
+def common_hanzi() -> set:
+    """GB2312 一级汉字（最常用的 3755 个）：游戏内编辑器里打新字时，网页版也显示得出来。"""
+    out = set()
+    for hi in range(0xB0, 0xD8):
+        for lo in range(0xA1, 0xFF):
+            try:
+                out.add(bytes([hi, lo]).decode("gb2312"))
+            except UnicodeDecodeError:
+                pass
+    return out
 
 
 def subset(src: str, out: str, weight: int, text: str, tmp: str) -> None:
@@ -31,7 +43,7 @@ def subset(src: str, out: str, weight: int, text: str, tmp: str) -> None:
 def main() -> None:
     if len(sys.argv) not in (2, 3):
         sys.exit(__doc__)
-    chars = set(chr(c) for c in range(0x20, 0x7F)) | set(EXTRA)
+    chars = set(chr(c) for c in range(0x20, 0x7F)) | set(EXTRA) | common_hanzi()
     paths = glob.glob(os.path.join(ROOT, "scripts", "**", "*.gd"), recursive=True)
     paths += glob.glob(os.path.join(ROOT, "levels", "**", "*.tscn"), recursive=True)
     for path in paths:

@@ -67,6 +67,9 @@ var light_mat: ShaderMaterial
 var smoke_fx: Node2D
 var smoke_mat: ShaderMaterial
 var world: Board3D
+var editor: LevelEditor
+var editing := false  # 在游戏内编辑器里
+var testing := false  # 从编辑器进来试玩
 
 
 func _ready() -> void:
@@ -101,6 +104,15 @@ func _ready() -> void:
 	ui = Node2D.new()
 	l2.add_child(ui)
 	ui.draw.connect(_draw_ui)
+	var l3 := CanvasLayer.new()
+	l3.layer = 3
+	add_child(l3)
+	editor = LevelEditor.new()
+	editor.world = world
+	editor.visible = false
+	editor.play_requested.connect(_play_from_editor)
+	editor.closed.connect(_close_editor)
+	l3.add_child(editor)
 	# 在 Godot 里按 F6 试玩某一关：关卡场景把自己的路径留在 Levels.test_path，跳到这里直接开始
 	if Levels.test_path != "":
 		var idx := Levels.index_of(Levels.test_path)
@@ -115,7 +127,7 @@ var _was_cloud := false
 
 func _process(delta: float) -> void:
 	t += delta
-	if not title:
+	if not title and not editing:
 		if game.s.cloud and not _was_cloud:
 			smoke_t = 0.0
 		_was_cloud = game.s.cloud
@@ -128,6 +140,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if editing:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if not title and game.s.mode == "play":
 			var p = _pick(event.position)
@@ -153,6 +167,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					_start(title_pick)
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				_start(title_pick)
+			KEY_E:
+				_open_editor(title_pick)
 		get_viewport().set_input_as_handled()
 		return
 	match k:
@@ -175,10 +191,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_ESCAPE:
 			if game.s.mode == "choice":
 				game.cancel()
+			elif testing:
+				_back_to_editor()
+				return
 			else:
 				_to_title()
 		KEY_ENTER, KEY_KP_ENTER:
 			if game.s.mode == "end":
+				if testing:
+					_back_to_editor()
+					return
 				if game.s.outcome == "win" and game.level_idx < Levels.count() - 1:
 					_start(game.level_idx + 1)
 				else:
@@ -194,13 +216,61 @@ func _start(idx: int) -> void:
 	game.load_level(idx)
 	title_pick = idx
 	title = false
+	testing = false
+	world.game = game
+	world.board = BOARD
 	world.visible = true
 	world.refresh()
 
 
 func _to_title() -> void:
 	title = true
+	testing = false
 	world.visible = false
+
+
+# ---------------------------------------------------------------- 游戏内编辑器
+
+func _open_editor(idx: int) -> void:
+	title = false
+	editing = true
+	world.visible = true
+	editor.visible = true
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	world.set_edit_light(true)
+	editor.open_level(Levels.paths()[clampi(idx, 0, Levels.count() - 1)])
+
+
+func _play_from_editor(level: Dictionary) -> void:
+	editing = false
+	testing = true
+	editor.visible = false
+	world.set_edit_light(false)
+	game.load_data(level)
+	world.game = game
+	world.board = BOARD
+	world.refresh()
+
+
+func _back_to_editor() -> void:
+	testing = false
+	editing = true
+	editor.visible = true
+	world.set_edit_light(true)
+	world.set_hover(Vector2i.ZERO, false, false)
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	editor._rebuild_preview()
+
+
+func _close_editor() -> void:
+	editing = false
+	editor.visible = false
+	world.set_edit_light(false)
+	world.game = game
+	world.board = BOARD
+	Levels.reload()
+	title_pick = clampi(title_pick, 0, Levels.count() - 1)
+	_to_title()
 
 
 ## 鼠标指着的格子：优先找画面上离鼠标最近的人或物件，否则按地面算格子
@@ -246,6 +316,8 @@ func _draw() -> void:
 	if title:
 		_draw_title()
 		return
+	if editing:
+		return
 	_draw_tags()
 	_draw_density()
 	_draw_bubbles()
@@ -253,7 +325,7 @@ func _draw() -> void:
 
 func _draw_ui() -> void:
 	cv = ui
-	if title:
+	if title or editing:
 		return
 	_draw_hud()
 	_draw_message()
@@ -323,7 +395,7 @@ func _draw_title() -> void:
 			var h := 66.0 if sel else 36.0
 			_folder(i, Rect2(Vector2(430 if sel else 446, y), Vector2(460, h)), sel)
 			y += h + 8
-	_text_c("↑↓ 选择   Enter 开始   数字键直接进入", Vector2(650, 600), 13, C_DIM)
+	_text_c("↑↓ 选择   Enter 开始   数字键直接进入   E 编辑这一关", Vector2(650, 600), 13, C_DIM)
 
 
 func _folder(i: int, r: Rect2, full: bool) -> void:
@@ -359,7 +431,7 @@ func _window_corners() -> PackedVector2Array:
 
 
 func _draw_smoke_fx() -> void:
-	if title or not game.s.cloud:
+	if title or editing or not game.s.cloud:
 		return
 	var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
 	smoke_fx.draw_polygon(_window_corners(), PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]), uvs)
@@ -501,7 +573,7 @@ func _draw_message() -> void:
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in mini(lines.size(), 3):
 		_text(lines[i], Vector2(r.position.x + 42, r.position.y + 19 + i * 19), 15, C_INK)
-	_text("方向键 移动   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/回选关   Z 撤销   Backspace 重来",
+	_text("方向键 移动   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/%s   Z 撤销   Backspace 重来" % ("回编辑器" if testing else "回选关"),
 		Vector2(48, 634), 12, C_DIM)
 
 
@@ -531,7 +603,9 @@ func _draw_end() -> void:
 		_text(line, Vector2(card.position.x + 36, y), 14, Color(C_INK, 0.8))
 		y += 22
 	var next := ""
-	if win:
+	if testing:
+		next = "按 Enter 回到编辑器"
+	elif win:
 		next = "按 Enter 进入下一个案件" if game.level_idx < Levels.count() - 1 else "全部案件结案。按 Enter 回到选关"
 	else:
 		next = "按 Backspace 重来，Enter 回到选关"

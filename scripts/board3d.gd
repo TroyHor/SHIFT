@@ -106,6 +106,8 @@ var _glows: Array = []  # StandardMaterial3D
 var _bait_puffs: Array = []  # [MeshInstance3D, Vector3]
 var _fit_key := ""
 var _people := {}  # 实体 id → [节点, 原位置]，烟雾旁边的人做反应用
+var env: Environment
+var moon: DirectionalLight3D
 var _offsets := {}  # 实体 id → 同一格里多个人时的错开量，免得穿模
 var _player_off := Vector3.ZERO
 var _looks := {}
@@ -117,7 +119,7 @@ var _tile_mat: ShaderMaterial
 func setup(g, board_rect: Rect2) -> void:
 	game = g
 	board = board_rect
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#08090d")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -140,7 +142,7 @@ func setup(g, board_rect: Rect2) -> void:
 	add_child(cam)
 	cam.current = true
 
-	var moon := DirectionalLight3D.new()
+	moon = DirectionalLight3D.new()
 	moon.light_color = Color(0.6, 0.7, 0.95)
 	moon.light_energy = 0.4
 	moon.rotation_degrees = Vector3(-62, -28, 0)
@@ -256,7 +258,7 @@ func set_hover(p: Vector2i, on: bool, reach: bool) -> void:
 
 ## 镜头：整张地图放进 board 区域，居中
 func fit() -> void:
-	var key := "%dx%d" % [game.W, game.H]
+	var key := "%dx%d %s" % [game.W, game.H, board]
 	if key == _fit_key:
 		return
 	_fit_key = key
@@ -460,6 +462,13 @@ func refresh() -> void:
 		smoke_lamp.position = at(s.center, 1.3)
 
 
+## 编辑器里整张地图都要看得清：调亮环境光和月光
+func set_edit_light(on: bool) -> void:
+	env.ambient_light_energy = 1.5 if on else 0.65
+	moon.light_energy = 1.0 if on else 0.4
+	moon.shadow_enabled = not on
+
+
 ## 同一格里站了几个人（包括侦探）就左右错开，谁也不穿过谁
 func _spread_people() -> void:
 	_offsets.clear()
@@ -517,7 +526,7 @@ func _build_tiles() -> void:
 	_fill(wall_mm, walls.size(), wbuf)
 	_fill(cap_mm, walls.size(), cbuf)
 	# 地图下面一块深色底座，边上一圈金线
-	var key := "%dx%d" % [game.W, game.H]
+	var key := "%dx%d %s" % [game.W, game.H, board]
 	if plinth.get_meta("key", "") != key:
 		plinth.set_meta("key", key)
 		for c in plinth.get_children():

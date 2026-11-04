@@ -34,9 +34,14 @@ func _init(idx: int = 0) -> void:
 
 func load_level(idx: int) -> void:
 	level_idx = clampi(idx, 0, Levels.count() - 1)
-	L = Levels.get_level(level_idx)
+	load_data(Levels.get_level(level_idx))
+
+
+## 直接用一份关卡数据开局（游戏内编辑器预览和试玩用）
+func load_data(level: Dictionary) -> void:
+	L = level
 	H = L.map.size()
-	W = String(L.map[0]).length()
+	W = String(L.map[0]).length() if H > 0 else 0
 	reset()
 
 
@@ -74,9 +79,15 @@ func tile_at(p: Vector2i) -> int:
 	return Tile.WALL if L.map[p.y][p.x] == "#" else Tile.FLOOR
 
 
+## 编辑器的"过去"视图：整张地图都当成烟雾里
+var reveal_all := false
+
+
 func in_window(p: Vector2i) -> bool:
 	if not s.cloud:
 		return false
+	if reveal_all:
+		return true
 	var c: Vector2i = s.center
 	return absi(p.x - c.x) <= 1 and absi(p.y - c.y) <= 1
 

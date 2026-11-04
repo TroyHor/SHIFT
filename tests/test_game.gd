@@ -380,6 +380,10 @@ func test_intro1_door() -> void:
 	check(g.s.pos == Vector2i(7, 3) and not g.s.cloud, "intro1: walked through in smoke and stepped out into the present")
 	walk(g, "RRD")
 	check(g.s.clues.has("glove"), "intro1: glove found")
+	check(g.s.tobacco == 0, "intro1: the only pinch went on getting in")
+	goto(g, Vector2i(8, 5))
+	walk(g, "R")
+	check(g.s.tobacco == 1, "intro1: a tin in the back room")
 	goto(g, Vector2i(7, 3))
 	walk(g, "S" + "LL")
 	check(g.s.pos == Vector2i(5, 3) and g.s.tobacco == 0, "intro1: back out with the second pinch")
@@ -399,7 +403,7 @@ func test_intro2_ash() -> void:
 	goto(g, Vector2i(10, 3))
 	walk(g, "U")
 	check(g.s.clues.has("print") and g.s.ash == 0, "intro2: ash lifts the print")
-	goto(g, Vector2i(10, 5))
+	goto(g, Vector2i(10, 1))
 	walk(g, "R")
 	check(g.s.tobacco == 1, "intro2: second tin")
 	goto(g, Vector2i(7, 3))
@@ -426,12 +430,14 @@ func test_intro3_push() -> void:
 
 ## 四：烟雾里看得见过去的园丁时，再问现在的园丁
 func test_intro4_two() -> void:
+	# 过去的园丁站在书房门口；现在的园丁在门外右边
 	var g = level("04_two.tscn")
-	goto(g, Vector2i(7, 3))
-	walk(g, "R")
+	goto(g, Vector2i(7, 4))
+	g.interact(Vector2i(8, 3))
 	check(not g.s.clues.has("lie"), "intro4: without smoke he just repeats himself")
-	walk(g, "L")
-	walk(g, "S" + "R" + "R")
+	walk(g, "l" + "S" + "r")
+	check(g.s.cloud and g.in_window(Vector2i(5, 3)), "intro4: his past self is in the smoke")
+	g.interact(Vector2i(8, 3))
 	check(g.s.clues.has("lie"), "intro4: confronted with his past self")
 	accuse(g, 0)
 
@@ -451,8 +457,8 @@ func test_blocking() -> void:
 	walk(g1, "S" + "rr" + "rrd" + "r")
 	check(g1.s.pos == Vector2i(10, 4), "blocking: the glove is small, you can step over it, at %s" % g1.s.pos)
 	var g4 = level("04_two.tscn")
-	goto(g4, Vector2i(7, 3))
-	walk(g4, "r")
+	goto(g4, Vector2i(8, 4))
+	walk(g4, "u")
 	check(g4.s.pos == Vector2i(8, 3), "blocking: you can share a cell with a person")
 
 
@@ -460,7 +466,7 @@ func test_blocking() -> void:
 func test_onlookers() -> void:
 	var g = level("04_two.tscn")
 	check(g.onlookers().is_empty(), "onlookers: nobody reacts without smoke")
-	goto(g, Vector2i(6, 3))
+	goto(g, Vector2i(6, 4))
 	walk(g, "S")
 	var o: Dictionary = g.onlookers()
 	check(o.get("gardener_now", "") == "self", "onlookers: the gardener sees himself")

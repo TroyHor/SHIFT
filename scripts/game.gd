@@ -415,12 +415,12 @@ func choose(n: int) -> void:
 		"bait":
 			s.tobacco -= 1
 			e.baited = true
-			s.msg = "你在过去的烟灰缸里留下一撮烟丝。（烟丝 -1）\n爱抽烟的人闻到味道，会过来坐着抽到天亮。"
+			s.msg = "你在烟灰缸里留下一撮烟丝。（烟丝 -1）"
 		"candle":
 			if n == 1:
 				s.tobacco -= 1
 				e.lit = true
-				s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）\n这支蜡烛会一直烧到天亮，烧到旁边能烧的东西。"
+				s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）"
 			else:
 				_push(e, c.dir)
 	_derive()
@@ -511,8 +511,7 @@ func _push(e: Dictionary, dir: Vector2i) -> void:
 		s.msg = "推不动，那边被挡住了。"
 	else:
 		e.pos = tgt
-		s.msg = "你在过去推动了%s。现在的它，也会在新的位置。" % e.get("name", "它") if e.get("persist", false) \
-			else "你在过去推动了%s。" % e.get("name", "它")
+		s.msg = "你推动了%s。" % e.get("name", "它")
 
 
 func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
@@ -523,7 +522,7 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 		if e.get("burnt", false):
 			s.msg = "只剩一堆灰烬。"
 		else:
-			s.msg = e.now_text if e.now_text != "" else "%s纹丝不动。改变它得回到过去。" % src.get("name", "它")
+			s.msg = e.now_text if e.now_text != "" else "%s纹丝不动。" % src.get("name", "它")
 		return
 	match e.kind:
 		"inspector":
@@ -569,11 +568,7 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 			if s.seen.get(e.pair + "@" + other, false):
 				var clue := _compare_clue(e.pair)
 				if clue != "" and not s.clues.has(clue):
-					s.msg += "\n两相对照，少了一样东西。" + _add_clue(clue)
-			elif era == "present":
-				s.msg += "\n过去这里是什么样子？"
-			else:
-				s.msg += "\n现在这里还是这样吗？"
+					s.msg += _add_clue(clue)
 		"candle":
 			if e.get("lit", false):
 				_push(e, dir)
@@ -583,8 +578,6 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 				_offer("candle", e.id, "一支没点的蜡烛。\n[1] 用烟斗点燃（烟丝 -1）    [2] 推开它    [Esc] 算了", dir)
 		"ice":
 			_push(e, dir)
-			if s.msg.begins_with("你在过去推动"):
-				s.msg += "冰块到天亮会化掉，除非放在够冷的地方。"
 		"crate":
 			if e.get("push", false):
 				_push(e, dir)
@@ -594,9 +587,9 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 			if e.get("baited", false):
 				s.msg = "烟灰缸里已经放了烟丝。"
 			elif s.tobacco <= 0:
-				s.msg = "一只空烟灰缸。要是有烟丝……"
+				s.msg = "一只空烟灰缸。"
 			else:
-				_offer("bait", e.id, "一只空烟灰缸，就在过道边上。\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
+				_offer("bait", e.id, "一只空烟灰缸。\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
 		"static":
 			s.msg = e.get("past_text", e.text) if past else e.text
 		_:

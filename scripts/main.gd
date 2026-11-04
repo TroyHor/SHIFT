@@ -51,7 +51,7 @@ void fragment() {
 	float scratch = step(0.993, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
 	float wv = smoothstep(0.3, 0.75, length(UV - 0.5));
 	vec3 col = mix(vec3(0.22, 0.12, 0.04), vec3(0.95, 0.88, 0.7), scratch);
-	COLOR = vec4(col, 0.03 + abs(g) * 0.14 * (0.4 + density) + wv * 0.2 + scratch * 0.3);
+	COLOR = vec4(col, 0.02 + abs(g) * 0.1 * (0.4 + density) + wv * 0.25 + scratch * 0.3);
 }
 """
 

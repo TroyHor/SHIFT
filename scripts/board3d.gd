@@ -26,7 +26,7 @@ float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 vec3 grade(vec3 c, float past) {
 	float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
 	vec3 sep = mix(vec3(0.227, 0.149, 0.078), vec3(0.957, 0.886, 0.737), clamp(l * 1.1, 0.0, 1.0));
-	vec3 pc = mix(sep, c, 0.22);
+	vec3 pc = mix(sep, c, 0.22) * 0.72;
 	vec3 cool = vec3(l * 0.78, l * 0.88, l * 1.12);
 	vec3 nc = mix(cool, c, 0.38) * 0.92;
 	return mix(nc, pc, past);
@@ -121,7 +121,8 @@ func setup(g, board_rect: Rect2) -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.glow_intensity = 0.6
-	env.glow_bloom = 0.05
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.3
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -317,7 +318,10 @@ func _plane(w: float, d: float) -> PlaneMesh:
 
 ## 按当前时代调好色的材质
 func _m(c: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
-	return _raw(Art.grade(c, _past), rough, metal)
+	var g := Art.grade(c, _past)
+	if _past:
+		g = Color(g.r * 0.72, g.g * 0.72, g.b * 0.72, g.a)
+	return _raw(g, rough, metal)
 
 
 func _raw(c: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
@@ -927,7 +931,7 @@ func _animate_smoke() -> void:
 		return
 	var c := at(s.center)
 	var density := float(s.turns) / Game.SMOKE_TURNS
-	smoke_lamp.light_energy = 0.5 + density * 0.4
+	smoke_lamp.light_energy = 0.25 + density * 0.2
 	var n := _smoke_puffs.size()
 	for i in n:
 		var sp: Array = _smoke_puffs[i]
@@ -949,4 +953,4 @@ func _animate_smoke() -> void:
 		pos += Vector3(sin(a) * 0.08, 0.25 + 0.25 * (0.5 + 0.5 * sin(a * 0.7)), cos(a * 1.3) * 0.08)
 		sp[0].position = pos
 		sp[0].scale = Vector3.ONE * (0.7 + 0.2 * sin(a * 0.8)) * (0.6 + 0.5 * density)
-		sp[1].albedo_color.a = 0.45 * (0.4 + density)
+		sp[1].albedo_color.a = 0.3 * (0.4 + density)

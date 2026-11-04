@@ -109,8 +109,18 @@ func _ready() -> void:
 			_start(idx)
 
 
+var smoke_t := 0.0  # 这口烟吐出来多久了（对话框弹出动画用）
+var _was_cloud := false
+
+
 func _process(delta: float) -> void:
 	t += delta
+	if not title:
+		if game.s.cloud and not _was_cloud:
+			smoke_t = 0.0
+		_was_cloud = game.s.cloud
+		smoke_t += delta
+		_update_hover()
 	queue_redraw()
 	ui.queue_redraw()
 	smoke_fx.queue_redraw()
@@ -118,6 +128,14 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if not title and game.s.mode == "play":
+			var p = _pick(event.position)
+			if p != null:
+				game.interact(p)
+				world.refresh()
+				get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey and event.pressed):
 		return
 	var k: int = event.keycode
@@ -185,6 +203,40 @@ func _to_title() -> void:
 	world.visible = false
 
 
+## 鼠标指着的格子：优先找画面上离鼠标最近的人或物件，否则按地面算格子
+func _pick(mp: Vector2) -> Variant:
+	var best = null
+	var best_d := INF
+	for e in game.visible_ents():
+		if not e.get("solid", true):
+			continue
+		var c := world.screen(e.pos, 0.3)
+		var cell_px := world.screen(e.pos + Vector2i.RIGHT, 0.3).distance_to(c)
+		var dd := mp.distance_to(c)
+		if dd < cell_px * 0.62 and dd < best_d:
+			best_d = dd
+			best = e.pos
+	if best != null:
+		return best
+	var g = world.ground_cell(mp)
+	if g != null and game.thing_at(g) != null:
+		return g
+	return null
+
+
+func _update_hover() -> void:
+	var p = null
+	if game.s.mode == "play":
+		p = _pick(get_viewport().get_mouse_position())
+	if p == null:
+		world.set_hover(Vector2i.ZERO, false, false)
+		Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	else:
+		var ok: bool = game.in_reach(p)
+		world.set_hover(p, true, ok)
+		Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if ok else Input.CURSOR_ARROW)
+
+
 ## 当前画在哪一层（世界或界面），文字等辅助函数都画到这里
 var cv: CanvasItem
 
@@ -196,6 +248,7 @@ func _draw() -> void:
 		return
 	_draw_tags()
 	_draw_density()
+	_draw_bubbles()
 
 
 func _draw_ui() -> void:
@@ -331,6 +384,41 @@ func _draw_tags() -> void:
 		Art.text_center(self, FONT, s, c, size, Color("#efe6d2"))
 
 
+const WOW_LINES := ["好厉害……", "这烟里……是昨晚？", "我没看花眼吧？", "天哪……", "这是什么戏法？"]
+
+
+## 烟雾旁边的人看得到烟里的过去：头顶冒出对话框；看见过去的自己会吓一跳
+func _draw_bubbles() -> void:
+	var looks: Dictionary = game.onlookers()
+	if looks.is_empty():
+		return
+	var pop := clampf(smoke_t * 5.0, 0.0, 1.0)
+	for e in game.present_ents():
+		if not looks.has(e.id):
+			continue
+		var line: String
+		if looks[e.id] == "self":
+			line = "那……那是我？！"
+		elif e.kind == "inspector":
+			line = "又是你那烟斗戏法。"
+		else:
+			line = WOW_LINES[absi(hash(e.id)) % WOW_LINES.size()]
+		var head := world.screen(e.pos, 1.3)
+		var size := 12
+		var w := FONT.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 14
+		var shake := Vector2(sin(t * 55.0) * 1.5, 0) if looks[e.id] == "self" else Vector2.ZERO
+		var c := head + Vector2(0, -14) + shake
+		draw_set_transform(c, 0, Vector2.ONE * (0.4 + 0.6 * pop))
+		var r := Rect2(Vector2(-w / 2, -11), Vector2(w, 22))
+		draw_rect(r, Color("#f4ecd8"))
+		draw_rect(r, Color(C_INK, 0.8), false, 1.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(-5, 10), Vector2(5, 10), Vector2(0, 18)]), Color("#f4ecd8"))
+		draw_line(Vector2(-5, 11), Vector2(0, 18), Color(C_INK, 0.8), 1.0)
+		draw_line(Vector2(5, 11), Vector2(0, 18), Color(C_INK, 0.8), 1.0)
+		Art.text_center(self, FONT, line, Vector2.ZERO, size, Color("#a8322a") if looks[e.id] == "self" else C_INK)
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
+
 ## 烟雾浓度：窗口上沿一排小点，每个行动用掉一个
 func _draw_density() -> void:
 	var s: Dictionary = game.s
@@ -413,7 +501,7 @@ func _draw_message() -> void:
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in mini(lines.size(), 3):
 		_text(lines[i], Vector2(r.position.x + 42, r.position.y + 19 + i * 19), 15, C_INK)
-	_text("方向键 移动/互动   Shift 吐烟   1/2 选择   Esc 取消/回选关   Z 撤销   Backspace 重来",
+	_text("方向键 移动   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/回选关   Z 撤销   Backspace 重来",
 		Vector2(48, 634), 12, C_DIM)
 
 

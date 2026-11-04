@@ -149,6 +149,7 @@ label = "柴"
 now_text = "账房门口堆满了柴火，过不去。"
 persist = true
 flammable = true
+block = true
 
 [node name="ledger" type="Node2D" parent="Ents" unique_id=1383641673]
 position = Vector2(608, 288)

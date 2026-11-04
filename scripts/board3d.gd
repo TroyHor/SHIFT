@@ -105,6 +105,10 @@ var _flames: Array = []  # [Node3D, OmniLight3D or null]
 var _glows: Array = []  # StandardMaterial3D
 var _bait_puffs: Array = []  # [MeshInstance3D, Vector3]
 var _fit_key := ""
+var _people := {}  # 实体 id → [节点, 原位置]，烟雾旁边的人做反应用
+var _looks := {}
+var hover: MeshInstance3D
+var hover_mat: StandardMaterial3D
 var _tile_mat: ShaderMaterial
 
 
@@ -186,6 +190,12 @@ func setup(g, board_rect: Rect2) -> void:
 	dyn = Node3D.new()
 	add_child(dyn)
 	_build_player()
+	hover_mat = StandardMaterial3D.new()
+	hover_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	hover_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	hover = _part(self, _torus(0.4, 0.46), hover_mat, Vector3.ZERO, Vector3.ZERO, Vector3(1, 0.25, 1))
+	hover.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	hover.visible = false
 
 
 func _new_mm(mesh: Mesh) -> MultiMeshInstance3D:
@@ -214,6 +224,27 @@ func screen(p: Vector2i, y := 0.0) -> Vector2:
 
 func screen_v(v: Vector3) -> Vector2:
 	return cam.unproject_position(v)
+
+
+## 鼠标在地面上指着哪一格
+func ground_cell(mp: Vector2) -> Variant:
+	var o := cam.project_ray_origin(mp)
+	var dir := cam.project_ray_normal(mp)
+	if absf(dir.y) < 0.0001:
+		return null
+	var k := -o.y / dir.y
+	if k < 0:
+		return null
+	var hit := o + dir * k
+	return Vector2i(floori(hit.x), floori(hit.z))
+
+
+## 鼠标指着的东西：够得着是金色，太远是灰色
+func set_hover(p: Vector2i, on: bool, reach: bool) -> void:
+	hover.visible = on
+	if on:
+		hover.position = at(p, 0.03)
+		hover_mat.albedo_color = Color(0.95, 0.78, 0.45, 0.9) if reach else Color(0.7, 0.72, 0.78, 0.45)
 
 
 ## 镜头：整张地图放进 board 区域，居中
@@ -399,11 +430,15 @@ func refresh() -> void:
 			continue
 		_past = false
 		_later(lt)
+	_people.clear()
+	_looks = game.onlookers()
 	for e in game.visible_ents():
 		_past = game.in_window(e.pos)
 		var node := _entity(e)
 		node.position = at(e.pos)
 		dyn.add_child(node)
+		if _looks.has(e.id):
+			_people[e.id] = [node, node.position]
 	_anchors()
 	_routes()
 	var s: Dictionary = game.s
@@ -930,6 +965,15 @@ func _process(delta: float) -> void:
 		bp[0].position = Vector3(sin(t * 2.0) * 0.03, 0.12 + k * 0.4, 0)
 		bp[0].scale = Vector3.ONE * (0.6 + k * 1.6)
 		bp[1].albedo_color.a = 0.45 * (1.0 - k)
+	# 烟雾旁边的人：看呆了的轻轻踮脚，看见过去自己的吓得发抖
+	for id in _people:
+		var nd: Node3D = _people[id][0]
+		var base: Vector3 = _people[id][1]
+		if _looks.get(id, "") == "self":
+			nd.position = base + Vector3(sin(t * 58.0) * 0.035, 0, cos(t * 47.0) * 0.02)
+		else:
+			nd.position = base + Vector3(0, absf(sin(t * 5.0 + base.x)) * 0.05, 0)
+	hover.rotation.y = t * 1.5
 	_animate_smoke()
 
 

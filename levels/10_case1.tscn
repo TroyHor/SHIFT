@@ -44,6 +44,13 @@ script = ExtResource("4_txwf5")
 display_name = "砖墙"
 text = "这扇门被砖砌死了，灰浆还没干透。"
 
+[node name="Lock" type="Node2D" parent="Later" unique_id=1367649895]
+position = Vector2(512, 288)
+script = ExtResource("4_txwf5")
+kind = "lock"
+display_name = "后门"
+text = "后门从里面闩上了。"
+
 [node name="Ents" type="Node2D" parent="." unique_id=957579078]
 
 [node name="inspector" type="Node2D" parent="Ents" unique_id=611864662]
@@ -175,19 +182,19 @@ kind = "crate"
 era = "past"
 display_name = "衣橱"
 label = "橱"
-now_text = "沉重的衣橱堵着后门。"
+now_text = "衣橱卡在后门的门框里。"
 push = true
 persist = true
 
 [node name="safe_now" type="Node2D" parent="Ents" unique_id=902799528]
-position = Vector2(608, 256)
+position = Vector2(576, 256)
 script = ExtResource("5_gucdn")
 era = "present"
 label = "箱"
 text = "保险箱开着，里面是空的。"
 
 [node name="safe_then" type="Node2D" parent="Ents" unique_id=1484628245]
-position = Vector2(608, 256)
+position = Vector2(576, 256)
 script = ExtResource("5_gucdn")
 kind = "container"
 era = "past"

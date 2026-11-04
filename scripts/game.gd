@@ -31,7 +31,7 @@ func _init(idx: int = 0) -> void:
 
 
 func load_level(idx: int) -> void:
-	level_idx = clampi(idx, 0, Levels.COUNT - 1)
+	level_idx = clampi(idx, 0, Levels.count() - 1)
 	L = Levels.get_level(level_idx)
 	H = L.map.size()
 	W = String(L.map[0]).length()

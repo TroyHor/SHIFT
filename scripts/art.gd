@@ -1,3 +1,4 @@
+@tool
 class_name Art
 extends RefCounted
 ## 画面：全部用 _draw() 程序化绘制，不依赖贴图。
@@ -39,6 +40,50 @@ const PEOPLE := {
 	"passenger": {"coat": Color("#5a5a62"), "skin": Color("#e0c0a0"), "hat": "top", "hatc": Color("#141418")},
 	"porter": {"coat": Color("#7a2a2a"), "skin": Color("#c89878"), "hat": "pillbox", "hatc": Color("#b83a32")},
 }
+
+
+# ---------------------------------------------------------------- 选画法
+
+static func base_id(e: Dictionary) -> String:
+	var id: String = e.get("src", e.get("id", ""))
+	return id.split("#")[0]
+
+
+## 人物造型：优先用关卡里填的 sprite，否则按 id 猜
+static func style_for(e: Dictionary) -> String:
+	if e.get("kind", "") == "inspector":
+		return "inspector"
+	var sp: String = e.get("sprite", "")
+	if PEOPLE.has(sp):
+		return sp
+	var id := base_id(e)
+	for k in PEOPLE:
+		if id.begins_with(k):
+			return k
+	return "butler"
+
+
+## 物件画法：优先用关卡里填的 sprite，否则按 id 查表；查不到就画成带字的方块
+static func sprite_for(e: Dictionary) -> String:
+	var sp: String = e.get("sprite", "")
+	if sp != "":
+		return sp
+	var key := base_id(e)
+	var s: String = SPRITES.get(key, "")
+	if e.get("burnt", false):
+		s = "wax" if key == "candle" else "embers"
+	return s
+
+
+## 画一个实体（人物、烟丝罐或物件），供游戏和 Godot 编辑器共用
+static func entity(ci: CanvasItem, cell: Rect2, e: Dictionary, past: bool, t: float, done: bool) -> void:
+	var kind: String = e.get("kind", "")
+	if kind == "source" or e.get("model", "") == "tin":
+		tin(ci, cell, 1.0, kind == "source", t)
+	elif kind in ["inspector", "npc"]:
+		person(ci, cell, style_for(e), past, t, false)
+	else:
+		thing(ci, cell, sprite_for(e), e, past, t, done)
 
 
 # ---------------------------------------------------------------- 基础

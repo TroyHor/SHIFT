@@ -90,6 +90,12 @@ func _ready() -> void:
 	ui = Node2D.new()
 	l2.add_child(ui)
 	ui.draw.connect(_draw_ui)
+	# 在 Godot 里按 F6 试玩某一关：关卡场景把自己的路径留在 Levels.test_path，跳到这里直接开始
+	if Levels.test_path != "":
+		var idx := Levels.index_of(Levels.test_path)
+		Levels.test_path = ""
+		if idx >= 0:
+			_start(idx)
 
 
 func _process(delta: float) -> void:
@@ -108,12 +114,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if title:
 		match k:
 			KEY_UP, KEY_W:
-				title_pick = (title_pick + Levels.COUNT - 1) % Levels.COUNT
+				title_pick = (title_pick + Levels.count() - 1) % Levels.count()
 			KEY_DOWN, KEY_S:
-				title_pick = (title_pick + 1) % Levels.COUNT
-			KEY_1, KEY_2, KEY_3:
-				title_pick = k - KEY_1
-				_start(title_pick)
+				title_pick = (title_pick + 1) % Levels.count()
+			KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9:
+				if k - KEY_1 < Levels.count():
+					title_pick = k - KEY_1
+					_start(title_pick)
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				_start(title_pick)
 		get_viewport().set_input_as_handled()
@@ -142,7 +149,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				title = true
 		KEY_ENTER, KEY_KP_ENTER:
 			if game.s.mode == "end":
-				if game.s.outcome == "win" and game.level_idx < Levels.COUNT - 1:
+				if game.s.outcome == "win" and game.level_idx < Levels.count() - 1:
 					_start(game.level_idx + 1)
 				else:
 					title = true
@@ -260,10 +267,12 @@ func _draw_title() -> void:
 	_text_c("烟 斗 侦 探", Vector2(650, 168), 30, Color("#efe6d2"), SERIF)
 	_text_c("按 Shift 吐一口烟，烟雾里是案发当晚。", Vector2(650, 206), 14, C_DIM)
 	# 档案夹
-	for i in Levels.COUNT:
-		var lv: Dictionary = Levels.get_level(i)
+	var n := Levels.count()
+	var step := minf(96.0, 330.0 / maxf(1.0, n))
+	for i in n:
+		var lv: Dictionary = Levels.info(i)
 		var sel := i == title_pick
-		var r := Rect2(Vector2(430 if sel else 446, 250 + i * 96), Vector2(460, 80))
+		var r := Rect2(Vector2(430 if sel else 446, 250 + i * step), Vector2(460, minf(80.0, step - 14)))
 		draw_rect(Rect2(r.position + Vector2(4, 5), r.size), Color(0, 0, 0, 0.5))
 		var folder := Color("#d8c08a") if sel else Color("#7a6a4c")
 		draw_rect(Rect2(r.position + Vector2(16, -10), Vector2(110, 12)), folder.darkened(0.08))
@@ -277,7 +286,7 @@ func _draw_title() -> void:
 			cv.draw_rect(Rect2(-34, -16, 68, 32), Color("#a8322a"), false, 2)
 			_text_c("调查", Vector2.ZERO, 16, Color("#a8322a"), SERIF)
 			cv.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-	_text_c("↑↓ 选择   Enter 开始   1/2/3 直接进入", Vector2(650, 600), 13, C_DIM)
+	_text_c("↑↓ 选择   Enter 开始   数字键直接进入", Vector2(650, 600), 13, C_DIM)
 
 
 # ---------------------------------------------------------------- 世界
@@ -296,9 +305,8 @@ func _wall(p: Vector2i) -> bool:
 
 
 func _draw_board() -> void:
-	var th: Dictionary = Art.THEMES[game.level_idx]
+	var th: Dictionary = Art.THEMES[clampi(int(game.L.get("style", 0)), 0, Art.THEMES.size() - 1)]
 	var cold: Array = game.L.cold
-	var core := Rect2i(Levels.OFF, Vector2i(18, 10))
 	for y in game.H:
 		for x in game.W:
 			var p := Vector2i(x, y)
@@ -307,7 +315,8 @@ func _draw_board() -> void:
 			if _wall(p):
 				Art.wall_tile(self, r, th, past, not _wall(p + Vector2i.DOWN), not _wall(p + Vector2i.LEFT), not _wall(p + Vector2i.RIGHT))
 				continue
-			var kind: String = th.core if core.has_point(p) else th.ring
+			# 地图里 "," 是室外地面，"." 是室内地面
+			var kind: String = th.ring if String(game.L.map[y])[x] == "," else th.core
 			Art.floor_tile(self, r, p, kind, past, cold.has(p))
 			if _wall(p + Vector2i.UP):
 				Art.wall_shadow(self, r)
@@ -329,37 +338,10 @@ func _draw_later() -> void:
 		Art.later(self, _cell(lt.pos), lt.kind)
 
 
-func _base_id(e: Dictionary) -> String:
-	var id: String = e.get("src", e.id)
-	return id.split("#")[0]
-
-
-func _style(e: Dictionary) -> String:
-	if e.kind == "inspector":
-		return "inspector"
-	var id := _base_id(e)
-	for k in ["maid", "butler", "cook", "clerk", "conductor", "passenger", "porter"]:
-		if id.begins_with(k):
-			return k
-	return "butler"
-
-
 func _draw_ent(e: Dictionary) -> void:
-	var r := _cell(e.pos)
-	var past: bool = game.in_window(e.pos)
-	if e.kind == "source" or e.get("model", "") == "tin":
-		Art.tin(self, r, 1.0, e.kind == "source", t)
-		return
-	if e.kind in ["inspector", "npc"]:
-		Art.person(self, r, _style(e), past, t, false)
-		return
-	var key := _base_id(e)
-	var sprite: String = Art.SPRITES.get(key, "")
-	if e.get("burnt", false):
-		sprite = "wax" if key == "candle" else "embers"
 	var done: bool = (e.kind in ["cache", "clue"] and game.s.clues.has(e.get("clue", ""))) \
 		or (e.kind == "container" and e.get("taken", false))
-	Art.thing(self, r, sprite, e, past, t, done)
+	Art.entity(self, _cell(e.pos), e, game.in_window(e.pos), t, done)
 
 
 ## 烟丝锚点：所有烟丝来源用同一个模型（烟丝罐）。
@@ -575,7 +557,7 @@ func _draw_end() -> void:
 		y += 22
 	var next := ""
 	if win:
-		next = "按 Enter 进入下一个案件" if game.level_idx < Levels.COUNT - 1 else "三个案件全部结案。按 Enter 回到选关"
+		next = "按 Enter 进入下一个案件" if game.level_idx < Levels.count() - 1 else "全部案件结案。按 Enter 回到选关"
 	else:
 		next = "按 Backspace 重来，Enter 回到选关"
 	_text_c(next, Vector2(vp.x / 2, card.end.y - 28), 15, Color("#8a5a20"))

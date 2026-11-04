@@ -35,9 +35,12 @@ func check(cond: bool, what: String) -> void:
 		print("FAIL: " + what)
 
 
-## 核心区域里的坐标（关卡数据用 18x10 的局部坐标写，放在大地图的 (4,2)）
+## 核心区域里的坐标：原来的关卡用 18x10 的局部坐标写，放在大地图的 (4,2)
+const OFF := Vector2i(4, 2)
+
+
 func lc(x: int, y: int) -> Vector2i:
-	return Vector2i(x, y) + Levels.OFF
+	return Vector2i(x, y) + OFF
 
 
 ## 在现在里按最短路走到 target（不吐烟、不互动）
@@ -191,7 +194,7 @@ func test_case1_pouch_shares_the_maid_window() -> void:
 
 
 func test_anchors_visible() -> void:
-	for i in Levels.COUNT:
+	for i in Levels.count():
 		var g = GameLogic.new(i)
 		var past := 0
 		for a in g.anchors():

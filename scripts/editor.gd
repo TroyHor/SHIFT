@@ -59,6 +59,7 @@ var view_past := false
 var selected: Node = null
 var _sel_path := NodePath("")
 var _drag_from = null
+var _press_cell = null
 var _painting := false
 var _hover = null
 var _preview_dirty := false
@@ -448,18 +449,28 @@ func _board_input(ev: InputEvent) -> void:
 		return
 	if not ev.pressed:
 		_painting = false
-		if _drag_from != null and selected != null and _in_map(p) and p != _drag_from:
+		# 按下和松开在同一格就只是选中；拖动按地面格子的位移来挪（点在人身上拖也一样）
+		var to = null
+		if _drag_from != null and p != null and _press_cell != null:
+			to = _drag_from + (p - _press_cell)
+		if to != null and selected != null and _in_map(to) and to != _drag_from:
 			doc.snapshot()
-			doc.move_to(selected, p)
+			doc.move_to(selected, to)
 			_changed(true)
 			_build_sel_tab()
 		_drag_from = null
 		return
-	if not _in_map(p):
+	_press_cell = p
+	if not _in_map(p) and not (tool == Tool.SELECT and _pick_sprite(ev.position + BOARD.position) != null):
 		return
 	match tool:
 		Tool.SELECT:
-			_select_at(p)
+			var hit := _pick_sprite(ev.position + BOARD.position)
+			if hit != null:
+				_select(hit)
+				p = doc.cell(hit)
+			else:
+				_select_at(p)
 			_drag_from = p if selected != null else null
 		Tool.FLOOR, Tool.WALL, Tool.OUTDOOR, Tool.COLD:
 			doc.snapshot()
@@ -497,6 +508,26 @@ func _paint(p: Vector2i) -> void:
 		return
 	doc.paint(p, code)
 	_rebuild_preview()
+
+
+## 点在人或物件的身上（不只是脚下那一格）也能选中：找画面上离鼠标最近的
+func _pick_sprite(mp: Vector2) -> LevelEnt:
+	var best: LevelEnt = null
+	var best_d := INF
+	for e in pv.visible_ents():
+		var n := doc.ent_by_id(String(e.id))
+		if n == null and e.has("src"):
+			n = doc.ent_by_id(String(e.src))
+		if n == null:
+			continue
+		var cell_px := world.screen(e.pos + Vector2i.RIGHT, 0.3).distance_to(world.screen(e.pos, 0.3))
+		var tall := 1.1 if e.kind in ["npc", "inspector"] else 0.5
+		for y in [0.3, tall]:
+			var dd := mp.distance_to(world.screen_e(e, y))
+			if dd < cell_px * 0.45 and dd < best_d:
+				best_d = dd
+				best = n
+	return best
 
 
 ## 同一格有几样东西时，再点一下换下一个；先选当前视图里看得到的那个时代

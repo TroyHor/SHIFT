@@ -573,7 +573,7 @@ func _draw_message() -> void:
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in mini(lines.size(), 3):
 		_text(lines[i], Vector2(r.position.x + 42, r.position.y + 19 + i * 19), 15, C_INK)
-	_text("方向键 移动   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/%s   Z 撤销   Backspace 重来" % ("回编辑器" if testing else "回选关"),
+	_text("方向键 移动/撞上去推   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/%s   Z 撤销   Backspace 重来" % ("回编辑器" if testing else "回选关"),
 		Vector2(48, 634), 12, C_DIM)
 
 

@@ -403,12 +403,32 @@ func move(dir: Vector2i) -> void:
 		if lt != null:
 			s.msg = lt.text
 			return
+	# 推东西靠撞：走向一件推得动的东西，就把它往前推一格（人留在原地）
+	var e = thing_at(t)
+	if e != null and pushable(e):
+		_snapshot()
+		s.msg = ""
+		_push(e, dir)
+		_after_action()
+		return
 	if blocks(t):
 		return
 	_snapshot()
 	s.msg = ""
 	s.pos = t
 	_after_action()
+
+
+## 撞上去能推动的东西：过去的可推家具、蜡烛、冰块（从过去留到现在的那份推不动）
+static func pushable(e: Dictionary) -> bool:
+	if e.get("echo", false):
+		return false
+	match e.get("kind", ""):
+		"crate":
+			return e.get("push", false)
+		"candle", "ice":
+			return true
+	return false
 
 
 ## 侦探站在哪里伸手够得着：自己脚下和周围一圈
@@ -461,10 +481,8 @@ func choose(n: int) -> void:
 	if s.mode != "choice":
 		return
 	var c: Dictionary = s.choice
-	if c.type != "accuse" and c.type != "candle" and n != 1:
+	if c.type != "accuse" and n != 1:
 		cancel()
-		return
-	if c.type == "candle" and n not in [1, 2]:
 		return
 	_snapshot()
 	s.mode = "play"
@@ -501,12 +519,9 @@ func choose(n: int) -> void:
 			e.baited = true
 			s.msg = "你在烟灰缸里留下一撮烟丝。（烟丝 -1）"
 		"candle":
-			if n == 1:
-				s.tobacco -= 1
-				e.lit = true
-				s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）"
-			else:
-				_push(e, c.dir)
+			s.tobacco -= 1
+			e.lit = true
+			s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）"
 	_derive()
 
 
@@ -665,19 +680,15 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 				if clue != "" and not s.clues.has(clue):
 					s.msg += _add_clue(clue)
 		"candle":
+			# 点击只用来点火；推它要走过去撞
 			if e.get("lit", false):
-				_push(e, dir)
+				s.msg = "蜡烛在烧。"
 			elif s.tobacco <= 0:
-				_push(e, dir)
+				s.msg = "一支没点的蜡烛。"
 			else:
-				_offer("candle", e.id, "一支没点的蜡烛。\n[1] 用烟斗点燃（烟丝 -1）    [2] 推开它    [Esc] 算了", dir)
-		"ice":
-			_push(e, dir)
-		"crate":
-			if e.get("push", false):
-				_push(e, dir)
-			else:
-				s.msg = "推不动。"
+				_offer("candle", e.id, "一支没点的蜡烛。\n[1] 用烟斗点燃（烟丝 -1）    [Esc] 算了", dir)
+		"ice", "crate":
+			s.msg = e.get("text", "")
 		"ashtray":
 			if e.get("baited", false):
 				s.msg = "烟灰缸里已经放了烟丝。"

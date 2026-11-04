@@ -98,10 +98,13 @@ func c1_garden(g) -> void:
 	goto(g, g.L.start)
 
 
-## 玩家的一步：前面有东西就点它（站在旁边互动），没有就走过去
+## 玩家的一步：前面是推得动的东西就撞过去推，别的东西就点它（站在旁边互动），没有就走过去
 func step(g, dir: Vector2i) -> void:
 	var p: Vector2i = g.s.pos + dir
-	if g.thing_at(p) != null:
+	var e = g.thing_at(p)
+	if e != null and GameLogic.pushable(e):
+		g.move(dir)
+	elif e != null:
 		g.interact(p)
 	else:
 		g.move(dir)
@@ -261,7 +264,12 @@ func test_case2_full() -> void:
 	check(g.s.tobacco == 3, "c2: cellar tin (anchor behind the planks)")
 	walk(g, "U" + "S" + "U")
 	check(g.s.clues.has("icicle"), "c2: one icicle missing")
-	walk(g, "LL" + "LDDDLDS" + "D1")
+	walk(g, "LL" + "LDDDLDS")
+	walk(g, "D")
+	check(g.s.mode == "play" and not g.ent("candle").get("lit", false), "c2: bumping the candle never asks about lighting it")
+	g.undo()
+	g.interact(g.s.pos + Vector2i.DOWN)  # 点击蜡烛才会问要不要点火
+	walk(g, "1")
 	check(g.ent("candle").get("lit", false) and g.s.tobacco == 0, "c2: lit the candle with the pipe")
 	walk(g, "LDR")
 	check(g.ent("candle").pos == Vector2i(15, 9), "c2: candle next to the woodpile")
@@ -451,6 +459,12 @@ func test_blocking() -> void:
 	check(g.s.pos == Vector2i(5, 3), "blocking: the wardrobe blocks, at %s" % g.s.pos)
 	g.interact(Vector2i(9, 1))
 	check(g.s.msg.find("太远") >= 0, "blocking: things out of reach can't be used")
+	# 推东西靠撞：在烟雾里点衣橱不会推，走过去撞才推
+	walk(g, "S" + "lu")
+	g.interact(Vector2i(5, 2))
+	check(g.ent("wardrobe").pos == Vector2i(5, 2), "push: clicking does not push")
+	g.move(Vector2i.RIGHT)
+	check(g.ent("wardrobe").pos == Vector2i(6, 2) and g.s.pos == Vector2i(4, 2), "push: walking into it pushes it, you stay put")
 	var g1 = level("01_door.tscn")
 	walk(g1, "rrrr")
 	check(g1.s.pos == Vector2i(5, 3), "blocking: a later brick wall blocks")

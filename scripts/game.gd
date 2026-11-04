@@ -426,7 +426,8 @@ func puff() -> void:
 	if s.mode != "play":
 		return
 	if s.tobacco <= 0:
-		s.msg = _stuck_msg()
+		# 真的走投无路才提示撤销；烟还开着、或者现在还有烟丝可拿，就只说烟斗空了
+		s.msg = _stuck_msg() if not s.cloud and not _present_source_left() else "烟斗空了。"
 		return
 	_snapshot()
 	s.tobacco -= 1

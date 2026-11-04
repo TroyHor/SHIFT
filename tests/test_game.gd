@@ -459,3 +459,5 @@ func test_onlookers() -> void:
 	var o: Dictionary = g.onlookers()
 	check(o.get("gardener_now", "") == "self", "onlookers: the gardener sees himself")
 	check(not o.has("butler"), "onlookers: the butler is too far away")
+	walk(g, "S")
+	check(g.s.cloud and g.s.msg == "烟斗空了。", "puff: an empty pipe inside the smoke is not a dead end")

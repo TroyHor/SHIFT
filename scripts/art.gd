@@ -45,7 +45,7 @@ const PEOPLE := {
 ## 字体是按游戏里用到的字裁剪过的。关卡里新写的字如果还没裁进去，
 ## 桌面版和编辑器先用系统自带的中文字体补上（网页版要重新运行 tools/subset_font.py）。
 static func add_font_fallback() -> void:
-	if not SANS.fallbacks.is_empty():
+	if not SANS.fallbacks.is_empty() or DisplayServer.get_name() == "headless":
 		return
 	var sf := SystemFont.new()
 	sf.font_names = PackedStringArray(["PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", "sans-serif"])

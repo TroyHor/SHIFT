@@ -106,6 +106,8 @@ var _glows: Array = []  # StandardMaterial3D
 var _bait_puffs: Array = []  # [MeshInstance3D, Vector3]
 var _fit_key := ""
 var _people := {}  # 实体 id → [节点, 原位置]，烟雾旁边的人做反应用
+var _offsets := {}  # 实体 id → 同一格里多个人时的错开量，免得穿模
+var _player_off := Vector3.ZERO
 var _looks := {}
 var hover: MeshInstance3D
 var hover_mat: StandardMaterial3D
@@ -220,6 +222,11 @@ static func at(p: Vector2i, y := 0.0) -> Vector3:
 ## 世界坐标在屏幕上的位置（给名牌、烟雾浓度等 2D 界面用）
 func screen(p: Vector2i, y := 0.0) -> Vector2:
 	return cam.unproject_position(at(p, y))
+
+
+## 人物在同一格时会错开站，名字和对话框要跟着人走
+func screen_e(e: Dictionary, y := 0.0) -> Vector2:
+	return cam.unproject_position(at(e.pos, y) + _offsets.get(e.id, Vector3.ZERO))
 
 
 func screen_v(v: Vector3) -> Vector2:
@@ -432,17 +439,18 @@ func refresh() -> void:
 		_later(lt)
 	_people.clear()
 	_looks = game.onlookers()
+	_spread_people()
 	for e in game.visible_ents():
 		_past = game.in_window(e.pos)
 		var node := _entity(e)
-		node.position = at(e.pos)
+		node.position = at(e.pos) + _offsets.get(e.id, Vector3.ZERO)
 		dyn.add_child(node)
 		if _looks.has(e.id):
 			_people[e.id] = [node, node.position]
 	_anchors()
 	_routes()
 	var s: Dictionary = game.s
-	_player_to = at(s.pos)
+	_player_to = at(s.pos) + _player_off
 	if player.position.distance_to(_player_to) > 1.5:
 		player.position = _player_to
 	_past = game.in_window(s.pos)
@@ -450,6 +458,32 @@ func refresh() -> void:
 	smoke_lamp.visible = s.cloud
 	if s.cloud:
 		smoke_lamp.position = at(s.center, 1.3)
+
+
+## 同一格里站了几个人（包括侦探）就左右错开，谁也不穿过谁
+func _spread_people() -> void:
+	_offsets.clear()
+	_player_off = Vector3.ZERO
+	var cells := {}
+	for e in game.visible_ents():
+		if e.kind in ["npc", "inspector"]:
+			if not cells.has(e.pos):
+				cells[e.pos] = []
+			cells[e.pos].append(e.id)
+	for p in cells:
+		var ids: Array = cells[p]
+		var n: int = ids.size() + (1 if p == game.s.pos else 0)
+		if n < 2:
+			continue
+		var gap := 0.62 / float(n)
+		var x0 := -gap * (n - 1) / 2.0
+		var i := 0
+		if p == game.s.pos:
+			_player_off = Vector3(x0, 0, 0.06)
+			i = 1
+		for id in ids:
+			_offsets[id] = Vector3(x0 + gap * i, 0, -0.06 if i % 2 else 0.06)
+			i += 1
 
 
 func _wall(p: Vector2i) -> bool:

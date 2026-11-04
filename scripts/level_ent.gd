@@ -61,8 +61,8 @@ const TILE := 32
 @export var erases: PackedStringArray
 ## 填 tin 就画成烟丝罐
 @export var model := ""
-## 挡路：算作地形，侦探走不过去（比如堵住门口的柴堆）。一般的家具和人都不挡路
-@export var block := false
+## 小物件：不挡路，侦探可以走过去（比如手套、纸条）。人、证物、暗格、指纹、烟丝罐本来就不挡路
+@export var small := false
 
 @export_group("人物：过去")
 ## 烟民：会被放了烟丝的烟灰缸引走
@@ -129,7 +129,7 @@ func to_dict() -> Dictionary:
 			d[k] = strings[k]
 	if amount != 0:
 		d["amount"] = amount
-	for k in ["push", "persist", "flammable", "smoker", "block"]:
+	for k in ["push", "persist", "flammable", "smoker", "small"]:
 		if get(k):
 			d[k] = true
 	if not erases.is_empty():

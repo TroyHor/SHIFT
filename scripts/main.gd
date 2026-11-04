@@ -210,7 +210,7 @@ func _pick(mp: Vector2) -> Variant:
 	for e in game.visible_ents():
 		if not e.get("solid", true):
 			continue
-		var c := world.screen(e.pos, 0.3)
+		var c := world.screen_e(e, 0.3)
 		var cell_px := world.screen(e.pos + Vector2i.RIGHT, 0.3).distance_to(c)
 		var dd := mp.distance_to(c)
 		if dd < cell_px * 0.62 and dd < best_d:
@@ -374,7 +374,7 @@ func _draw_tags() -> void:
 		var dp: Vector2i = e.pos - me
 		if maxi(absi(dp.x), absi(dp.y)) > 2:
 			continue
-		var c := world.screen(e.pos, 0.98)
+		var c := world.screen_e(e, 0.98)
 		var s := String(e.get("name", "警探"))
 		var size := 12
 		var w := FONT.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 10
@@ -403,7 +403,7 @@ func _draw_bubbles() -> void:
 			line = "又是你那烟斗戏法。"
 		else:
 			line = WOW_LINES[absi(hash(e.id)) % WOW_LINES.size()]
-		var head := world.screen(e.pos, 1.3)
+		var head := world.screen_e(e, 1.3)
 		var size := 12
 		var w := FONT.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 14
 		var shake := Vector2(sin(t * 55.0) * 1.5, 0) if looks[e.id] == "self" else Vector2.ZERO

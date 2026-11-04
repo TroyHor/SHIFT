@@ -6,7 +6,8 @@ extends RefCounted
 ##  - Shift 花 1 撮烟丝吐一口烟：以侦探为中心的 3x3 格子变成"过去"，得到 1 份烟灰。
 ##  - 烟雾停在原地，每个行动消耗 1 点浓度（共 8 点）；走出烟雾或浓度耗尽就回到现在。
 ##  - 改变世界只能在过去。"现在"只能看、问、拿。
-##  - 只有墙和后来的建造挡路；人和物件都能走过去。走到旁边点击它们来互动。
+##  - 墙、后来的建造和家具等大件挡路；人和地上的小物件不挡路。走到旁边点击它们来互动。
+##  - 吐烟时如果脚下在过去是挡路的东西，侦探会被挤到旁边最近的空地。
 ##  - 现在 = 过去 + 这一夜的流逝：
 ##      * 过去推过的家具，现在还在那里（persist）。
 ##      * 后来才砌的墙 / 钉的门 / 上的锁：如果过去那一格被东西占着，或者负责的人没走到，就不会出现。
@@ -128,17 +129,24 @@ func solid(era: String, p: Vector2i) -> bool:
 	return ent_at(era, p) != null
 
 
-## 侦探走不过去的格子：墙，以及"现在"里后来的建造
+## 不挡路的东西：人（可以和侦探站在同一格）和地上的小物件
+const PASSABLE_KINDS := ["npc", "inspector", "clue", "cache", "prints", "source"]
+
+
+static func passable(e: Dictionary) -> bool:
+	return e.get("small", false) or e.kind in PASSABLE_KINDS or not e.get("solid", true)
+
+
+## 侦探走不过去的格子：墙、"现在"里后来的建造，以及当前看到的家具等大件
 func blocks(p: Vector2i) -> bool:
 	if tile_at(p) == Tile.WALL:
 		return true
 	var era := era_at(p)
 	if era == "present" and later_at(p) != null:
 		return true
-	# 算作地形的大件（block），比如堵门的柴堆
 	var list: Array = past_ents() if era == "past" else present_ents()
 	for e in list:
-		if e.pos == p and e.get("block", false) and e.get("solid", true):
+		if e.pos == p and not passable(e):
 			return true
 	return false
 
@@ -277,7 +285,7 @@ func _derive() -> void:
 func _echo(e: Dictionary, pos: Vector2i, extra: Dictionary) -> Dictionary:
 	var out := {"id": e.id + "#now", "kind": e.kind, "era": "present", "pos": pos,
 		"label": e.label, "name": e.get("name", ""), "src": e.id, "echo": true,
-		"now_text": e.get("now_text", ""), "block": e.get("block", false)}
+		"now_text": e.get("now_text", ""), "small": e.get("small", false)}
 	out.merge(extra, true)
 	return out
 
@@ -373,7 +381,7 @@ func _bfs(from: Vector2i, to: Vector2i, blocked: Dictionary) -> Array:
 # =============================================================
 
 func move(dir: Vector2i) -> void:
-	## 走一格。只有墙和"现在"里后来的建造挡路；人和物件都可以走过去。
+	## 走一格。墙、后来的建造和大件挡路；人和小物件可以走过去。
 	if s.mode != "play":
 		return
 	var t: Vector2i = s.pos + dir
@@ -385,10 +393,6 @@ func move(dir: Vector2i) -> void:
 			s.msg = lt.text
 			return
 	if blocks(t):
-		var e = thing_at(t)
-		if e != null:
-			var tx: String = e.get("now_text", "") if era_at(t) == "present" else ""
-			s.msg = tx if tx != "" else "%s挡住了去路。" % e.get("name", "它")
 		return
 	_snapshot()
 	s.msg = ""
@@ -436,6 +440,10 @@ func puff() -> void:
 	s.center = s.pos
 	s.turns = SMOKE_TURNS
 	s.msg = "你吐出一口烟，烟雾里浮现出%s。（烟灰 +1）" % L.past_label
+	if blocks(s.pos):
+		var e = thing_at(s.pos)
+		s.pos = _nearest_free(s.pos)
+		s.msg += "\n那天晚上，这里放着%s，你被挤到了一边。" % (e.get("name", "东西") if e != null else "东西")
 
 
 func choose(n: int) -> void:

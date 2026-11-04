@@ -29,8 +29,9 @@ func _init() -> void:
 	test_intro2_ash()
 	test_intro3_push()
 	test_intro4_two()
-	test_walk_over_things()
+	test_blocking()
 	test_onlookers()
+	test_puff_squeezes_you_out()
 	print("ALL TESTS PASSED" if failures == 0 else "%d FAILURE(S)" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -95,7 +96,7 @@ func c1_garden(g) -> void:
 	goto(g, g.L.start)
 
 
-## 玩家的一步：那一格有东西就点它（站在旁边互动），没有就走过去
+## 玩家的一步：前面有东西就点它（站在旁边互动），没有就走过去
 func step(g, dir: Vector2i) -> void:
 	var p: Vector2i = g.s.pos + dir
 	if g.thing_at(p) != null:
@@ -104,7 +105,7 @@ func step(g, dir: Vector2i) -> void:
 		g.move(dir)
 
 
-## U/D/L/R 一步（有东西就点它，没有就走过去），u/d/l/r 只走不点（可以踩过物件），S 吐烟，1/2 选择，E 取消
+## U/D/L/R 一步（前面有东西就点它，没有就走），u/d/l/r 只走不点，S 吐烟，1/2 选择，E 取消
 func walk(g, path: String) -> void:
 	for c in path:
 		match c:
@@ -126,10 +127,8 @@ func walk(g, path: String) -> void:
 
 ## 从 (8,7) 吐烟推书架、拿凶器
 const C1_SHELF := "S" + "DRU" + "LLL" + "RRUR"
-## 密室里：拿完烟丝后，在保险箱旁吐烟，拿遗嘱，把衣橱推进后门门框（门闩就插不上了），从后门出去
-const C1_INSIDE := "DDDD" + "lll" + "S" + "R" + "rd" + "L" + "lll"
-## 从 (8,7) 走到 (11,3) 穿墙进密室，拿烟丝，在密室里推衣橱、拿遗嘱，从后门出来找警长
-const C1_SEALED := "UUUURRRS" + "RR" + "RRRUU" + C1_INSIDE + "UUULLLLLLLUULL"
+## 从 (8,7) 走到 (11,3) 穿墙进密室，拿烟丝，在密室里推开衣橱、拿遗嘱，从后门出来找警长
+const C1_SEALED := "UUUURRRS" + "RR" + "RRRUU" + "DDDDDLLS" + "DLU" + "RRUU" + "L" + "LLL" + "UUULLLLLLLUULL"
 
 
 func test_case1_route_lie() -> void:
@@ -150,14 +149,13 @@ func test_case1_route_lie() -> void:
 	check(g.s.pos == lc(13, 3) and not g.s.cloud, "c1 lie: walked through the later brick wall")
 	walk(g, "RRRUU")
 	check(g.s.tobacco == 1, "c1 lie: tin in sealed room")
-	check(g.later_at(Vector2i(16, 9)) != null, "c1 lie: back door bolted by default")
-	walk(g, "DDDD" + "lll" + "S" + "R")
+	walk(g, "DDDDDLLS" + "DLU")
+	check(g.ent("wardrobe").pos == lc(13, 6), "c1 lie: wardrobe pushed off the back door")
+	walk(g, "RRUU")
 	check(g.s.clues.has("will"), "c1 lie: will from the past safe")
-	walk(g, "rd" + "L")
-	check(g.ent("wardrobe").pos == Vector2i(16, 9), "c1 lie: wardrobe pushed into the back door frame")
-	check(g.later_at(Vector2i(16, 9)) == null, "c1 lie: the bolt can no longer be shot")
-	walk(g, "lll")
-	check(not g.s.cloud and g.s.tobacco == 0, "c1 lie: out of the smoke, no tobacco left")
+	walk(g, "L")
+	check(not g.s.cloud and g.s.tobacco == 0, "c1 lie: smoke done, no tobacco left")
+	walk(g, "LLL")
 	check(g.s.pos == lc(11, 7), "c1 lie: left through the back door for free, got %s" % g.s.pos)
 	walk(g, "UUULLLLLLLUULL")
 	check(g.s.mode == "choice" and g.s.choice.type == "accuse", "c1 lie: accuse prompt")
@@ -174,7 +172,7 @@ func test_case1_route_fingerprint() -> void:
 	check(g.s.clues.has("knife") and g.s.ash == 1, "c1 print: knife, one ash")
 	walk(g, "UUUULLU")
 	check(g.s.clues.has("print") and g.s.ash == 0, "c1 print: ash revealed the print")
-	walk(g, "RRRRRS" + "RR" + "RRRUU" + C1_INSIDE + "UUULLLLLLLUULL" + "1")
+	walk(g, "RRRRRS" + "RR" + "RRRUU" + "DDDDDLLS" + "DLU" + "RRUU" + "L" + "LLL" + "UUULLLLLLLUULL" + "1")
 	check(g.s.outcome == "win", "c1 print: won")
 	check(g.s.tobacco == 1, "c1 print: one pinch to spare, got %d" % g.s.tobacco)
 
@@ -211,12 +209,12 @@ func test_case1_without_wardrobe_you_run_dry() -> void:
 	c1_garden(g)
 	walk(g, "UUURRRRURS" + "LDD" + "L" + "RRRRRRUUU" + "DDLLLDDD" + C1_SHELF + "UUUURRRS" + "RR" + "RRRUU")
 	# 不推衣橱，直接在密室里拿遗嘱
-	walk(g, "DDDD" + "l" + "S" + "L")
+	walk(g, "DDDDDLLS" + "RU")
 	check(g.s.clues.has("will"), "c1 dry: got the will")
-	walk(g, "DD")
+	walk(g, "R")
 	check(g.s.tobacco == 0 and not g.s.cloud, "c1 dry: out of smoke and tobacco")
-	walk(g, "ll" + "u" + "l")
-	check(g.s.pos == Vector2i(17, 9), "c1 dry: the bolted back door stops you, at %s" % g.s.pos)
+	walk(g, "LLL")
+	check(g.s.pos.x >= 13, "c1 dry: still stuck in the sealed room, at %s" % g.s.pos)
 
 
 func test_case1_pouch_shares_the_maid_window() -> void:
@@ -438,16 +436,22 @@ func test_intro4_two() -> void:
 
 # ---------------- 操作 ----------------
 
-## 人和物件不挡路，只有墙和后来的建造挡路；互动要站到旁边
-func test_walk_over_things() -> void:
+## 家具挡路；人和地上的小物件不挡路；互动要站到旁边
+func test_blocking() -> void:
 	var g = level("03_push.tscn")
 	walk(g, "uuu")
-	check(g.s.pos == Vector2i(5, 2), "walk: stood on the wardrobe's cell, at %s" % g.s.pos)
+	check(g.s.pos == Vector2i(5, 3), "blocking: the wardrobe blocks, at %s" % g.s.pos)
 	g.interact(Vector2i(9, 1))
-	check(g.s.msg.find("太远") >= 0, "walk: things out of reach can't be used")
+	check(g.s.msg.find("太远") >= 0, "blocking: things out of reach can't be used")
 	var g1 = level("01_door.tscn")
 	walk(g1, "rrrr")
-	check(g1.s.pos == Vector2i(5, 3), "walk: a later brick wall still blocks")
+	check(g1.s.pos == Vector2i(5, 3), "blocking: a later brick wall blocks")
+	walk(g1, "S" + "rr" + "rrd" + "r")
+	check(g1.s.pos == Vector2i(10, 4), "blocking: the glove is small, you can step over it, at %s" % g1.s.pos)
+	var g4 = level("04_two.tscn")
+	goto(g4, Vector2i(7, 3))
+	walk(g4, "r")
+	check(g4.s.pos == Vector2i(8, 3), "blocking: you can share a cell with a person")
 
 
 ## 烟雾旁边的人看得到烟里的过去；看见过去的自己时是 self
@@ -461,3 +465,20 @@ func test_onlookers() -> void:
 	check(not o.has("butler"), "onlookers: the butler is too far away")
 	walk(g, "S")
 	check(g.s.cloud and g.s.msg == "烟斗空了。", "puff: an empty pipe inside the smoke is not a dead end")
+
+
+## 吐烟时脚下在过去有挡路的东西，就被挤到旁边
+func test_puff_squeezes_you_out() -> void:
+	# 案件二：冰块那天晚上在厨房里，到早上化了。站在冰块那一格吐烟，会被挤到旁边
+	var g = GameLogic.new(case_idx(2))
+	var ice: Vector2i = g.ent("ice").pos
+	check(not g.blocks(ice), "squeeze: the ice has melted by morning")
+	goto(g, ice)
+	walk(g, "S")
+	check(g.s.cloud and g.s.pos != ice and not g.blocks(g.s.pos), "squeeze: pushed off the ice's cell, at %s" % g.s.pos)
+	check(g.s.msg.find("挤") >= 0, "squeeze: told why")
+	# 序章四：过去的园丁不挡路，站在他那一格吐烟不会被挤开
+	var g4 = level("04_two.tscn")
+	goto(g4, Vector2i(5, 3))
+	walk(g4, "S")
+	check(g4.s.pos == Vector2i(5, 3), "squeeze: people never push you out")

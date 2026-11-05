@@ -21,6 +21,7 @@ func _init() -> void:
 	test_case3_full()
 	test_case3_default_night()
 	test_case3_bait_passenger()
+	test_case3_brute_route_runs_dry()
 	test_push_out_of_window_blocked()
 	test_reality_pushes_back()
 	test_undo()
@@ -318,8 +319,19 @@ func test_case3_default_night() -> void:
 	check(not g.d.saw.get("passenger", {}).has("porter"), "c3: passenger sleeps by default")
 
 
+## 开局没有烟丝：先拿死者行李里那一撮，再吐一口烟拿餐车柜台上的那包（+2）
+func c3_supplies(g) -> void:
+	goto(g, Vector2i(5, 6))
+	walk(g, "U")
+	check(g.s.tobacco == 1, "c3: the pinch in the victim's luggage")
+	goto(g, Vector2i(8, 6))
+	walk(g, "S" + "R")
+	check(g.s.tobacco == 2, "c3: the unopened pack in the past dining car, got %d" % g.s.tobacco)
+
+
 func test_case3_full() -> void:
 	var g = GameLogic.new(case_idx(3))
+	c3_supplies(g)
 	goto(g, Vector2i(13, 10))
 	walk(g, "L")
 	check(g.s.seen.get("tools@present", false), "c3: looked at present toolbox")
@@ -338,10 +350,24 @@ func test_case3_full() -> void:
 	accuse(g, 0)
 
 
+## 引老先生当证人，再吐烟穿 C 车厢的门：烟丝不够。只有引走锁门的列车员，一撮才同时解决证人和门锁
+func test_case3_brute_route_runs_dry() -> void:
+	var g = GameLogic.new(case_idx(3))
+	c3_supplies(g)
+	g.interact(Vector2i(9, 5))
+	walk(g, "1")
+	check(g.ent("ashtray_a").get("baited", false) and g.s.tobacco == 1, "c3 brute: baited car A in the dining-car smoke")
+	goto(g, Vector2i(13, 10))
+	walk(g, "L" + "US" + "DL")
+	check(g.s.clues.has("wrench") and g.s.tobacco == 0, "c3 brute: wrench, no tobacco left")
+	check(g.later_at(Vector2i(16, 7)) != null, "c3 brute: the C car stays locked and there is nothing left to smoke through it")
+
+
 func test_case3_bait_passenger() -> void:
 	var g = GameLogic.new(case_idx(3))
-	goto(g, Vector2i(9, 6))  # A 车厢烟灰缸的座位上吐烟，窗口盖住烟灰缸 (9,5)
-	walk(g, "S" + "U1")
+	c3_supplies(g)  # 餐车那口烟的窗口也盖住 A 车厢的烟灰缸 (9,5)
+	g.interact(Vector2i(9, 5))
+	walk(g, "1")
 	check(g.ent("ashtray_a").get("baited", false), "c3 passenger: baited car A ashtray")
 	check(g.d.saw.get("passenger", {}).has("porter"), "c3 passenger: old man saw the porter")
 	check(g.later_at(Vector2i(16, 7)) != null, "c3 passenger: each ashtray lures one smoker, so the conductor still locks up")

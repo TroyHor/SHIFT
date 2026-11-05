@@ -7,7 +7,7 @@
 
 [node name="Level" type="Node2D" unique_id=209237142]
 script = ExtResource("1_4nbla")
-title = "序章七 · 烟灰缸"
+title = "序章六 · 烟灰缸"
 theme = "过去的人还会继续走。他们走到哪，就看见什么。"
 intro = "邮局的钱柜昨夜被撬。邮差说他整晚都在后屋分信，门房说他一夜没出屋。"
 past_label = "昨夜 23:00"

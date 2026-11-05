@@ -177,16 +177,6 @@ label = "马"
 text = "马在打响鼻。"
 past_text = "马还没卸鞍，雪水顺着鬃毛往下滴。"
 
-[node name="stable_tin" type="Node2D" parent="Ents" unique_id=1729384051]
-position = Vector2(32, 128)
-script = ExtResource("5_p78oj")
-kind = "source"
-era = "present"
-display_name = "烟丝罐"
-text = "马槽边的草料里塞着一罐烟丝，大概是车夫藏的。我收下了。"
-amount = 1
-model = "tin"
-
 [node name="snowman" type="Node2D" parent="Ents" unique_id=833776133]
 position = Vector2(32, 32)
 script = ExtResource("5_p78oj")

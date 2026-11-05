@@ -7,7 +7,7 @@
 
 [node name="Level" type="Node2D" unique_id=110867285]
 script = ExtResource("1_7c1mx")
-title = "序章六 · 一夜的烛"
+title = "序章五 · 一夜的烛"
 theme = "蜡烛会自己烧完这一夜。"
 intro = "磨坊主的一袋金币昨夜不见了。今早，里屋门口不知被谁堆满了干柴。"
 past_label = "昨夜 21:00"

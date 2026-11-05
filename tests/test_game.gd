@@ -76,7 +76,7 @@ func goto(g, target: Vector2i) -> void:
 			break
 		for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
 			var n: Vector2i = p + dir
-			if prev.has(n) or g.solid(g.era_at(n), n):
+			if prev.has(n) or g.blocks(n):
 				continue
 			prev[n] = p
 			queue.append(n)
@@ -305,7 +305,8 @@ func test_case3_default_night() -> void:
 
 func test_case3_full() -> void:
 	var g = GameLogic.new(case_idx(3))
-	walk(g, "RRRRRRDDD" + "L")
+	goto(g, Vector2i(13, 10))
+	walk(g, "L")
 	check(g.s.seen.get("tools@present", false), "c3: looked at present toolbox")
 	walk(g, "US" + "DL")
 	check(g.s.clues.has("wrench"), "c3: wrench missing")
@@ -316,15 +317,16 @@ func test_case3_full() -> void:
 	check(g.d.saw.get("conductor", {}).has("porter"), "c3: conductor saw the porter")
 	walk(g, "RD")
 	check(g.s.clues.has("seen_by_conductor"), "c3: conductor testimony")
-	walk(g, "RRRRRUUU")
+	goto(g, Vector2i(18, 7))
+	walk(g, "U")
 	check(g.s.clues.has("telegram"), "c3: telegram in C car")
-	walk(g, "DDLLLLLLLLLLLLLUUUU1")
-	check(g.s.outcome == "win", "c3: won")
+	accuse(g, 0)
 
 
 func test_case3_bait_passenger() -> void:
 	var g = GameLogic.new(case_idx(3))
-	walk(g, "RRUS" + "U1")  # (5,4) 吐烟，窗口盖住 A 车厢的烟灰缸 (5,3)
+	goto(g, Vector2i(9, 6))  # A 车厢烟灰缸的座位上吐烟，窗口盖住烟灰缸 (9,5)
+	walk(g, "S" + "U1")
 	check(g.ent("ashtray_a").get("baited", false), "c3 passenger: baited car A ashtray")
 	check(g.d.saw.get("passenger", {}).has("porter"), "c3 passenger: old man saw the porter")
 	check(g.later_at(Vector2i(16, 7)) != null, "c3 passenger: each ashtray lures one smoker, so the conductor still locks up")
@@ -421,31 +423,41 @@ func test_intro2_ash() -> void:
 
 ## 三：在烟雾里推衣橱，现在它也挪开了，底下的暗格露出来
 func test_intro3_push() -> void:
+	# 里屋的门是后来锁上的：吐烟进去；衣橱在现在推不动，烟雾里从下面往上推开，暗格露出来
 	var g = level("03_push.tscn")
-	walk(g, "UU")
-	check(g.s.pos == Vector2i(5, 3), "intro3: wardrobe blocks in the present")
+	walk(g, "u")
+	check(g.s.pos == Vector2i(5, 5), "intro3: the new lock bars the back room")
+	walk(g, "S" + "uu")
+	check(g.s.pos == Vector2i(5, 3) and not g.s.cloud, "intro3: through the lock in smoke, out into the present room")
+	walk(g, "u")
+	check(g.s.pos == Vector2i(5, 3) and g.ent("wardrobe").pos == Vector2i(5, 2), "intro3: the wardrobe does not move in the present")
+	goto(g, Vector2i(4, 2))
 	walk(g, "S" + "U")
+	check(g.s.tobacco == 1, "intro3: the old tin in the corner")
+	walk(g, "r")
 	check(g.ent("wardrobe").pos == Vector2i(5, 2), "intro3: cannot push it out of the smoke")
-	walk(g, "LUR")
-	check(g.ent("wardrobe").pos == Vector2i(6, 2), "intro3: pushed inside the smoke")
-	walk(g, "DDD")
+	walk(g, "dru")
+	check(g.ent("wardrobe").pos == Vector2i(5, 1), "intro3: pushed up inside the smoke")
+	walk(g, "r")
 	check(not g.s.cloud, "intro3: out of the smoke")
-	goto(g, Vector2i(5, 3))
-	walk(g, "U")
+	g.interact(Vector2i(5, 2))
 	check(g.s.clues.has("watch"), "intro3: cache revealed under the old spot")
+	goto(g, Vector2i(5, 3))
+	walk(g, "S" + "dd")
+	check(g.s.pos == Vector2i(5, 5) and g.s.tobacco == 0, "intro3: back out with the last pinch")
 	accuse(g, 0)
 
 
 ## 四：烟雾里看得见过去的园丁时，再问现在的园丁
 func test_intro4_two() -> void:
-	# 过去的园丁站在书房门口；现在的园丁在门外右边
+	# 过去的园丁在书房里；现在的园丁站在书房门外
 	var g = level("04_two.tscn")
-	goto(g, Vector2i(7, 4))
-	g.interact(Vector2i(8, 3))
+	goto(g, Vector2i(5, 3))
+	g.interact(Vector2i(5, 4))
 	check(not g.s.clues.has("lie"), "intro4: without smoke he just repeats himself")
-	walk(g, "l" + "S" + "r")
-	check(g.s.cloud and g.in_window(Vector2i(5, 3)), "intro4: his past self is in the smoke")
-	g.interact(Vector2i(8, 3))
+	walk(g, "u" + "S" + "d")
+	check(g.s.cloud and g.in_window(Vector2i(4, 1)), "intro4: his past self is in the smoke")
+	g.interact(Vector2i(5, 4))
 	check(g.s.clues.has("lie"), "intro4: confronted with his past self")
 	accuse(g, 0)
 
@@ -455,7 +467,7 @@ func test_intro4_two() -> void:
 ## 家具挡路；人和地上的小物件不挡路；互动要站到旁边
 func test_blocking() -> void:
 	var g = level("03_push.tscn")
-	walk(g, "uuu")
+	walk(g, "S" + "uu" + "u")
 	check(g.s.pos == Vector2i(5, 3), "blocking: the wardrobe blocks, at %s" % g.s.pos)
 	g.interact(Vector2i(9, 1))
 	check(g.s.msg.find("太远") >= 0, "blocking: things out of reach can't be used")
@@ -471,16 +483,16 @@ func test_blocking() -> void:
 	walk(g1, "S" + "rr" + "rrd" + "r")
 	check(g1.s.pos == Vector2i(10, 4), "blocking: the glove is small, you can step over it, at %s" % g1.s.pos)
 	var g4 = level("04_two.tscn")
-	goto(g4, Vector2i(8, 4))
-	walk(g4, "u")
-	check(g4.s.pos == Vector2i(8, 3), "blocking: you can share a cell with a person")
+	goto(g4, Vector2i(4, 4))
+	walk(g4, "r")
+	check(g4.s.pos == Vector2i(5, 4), "blocking: you can share a cell with a person")
 
 
 ## 烟雾旁边的人看得到烟里的过去；看见过去的自己时是 self
 func test_onlookers() -> void:
 	var g = level("04_two.tscn")
 	check(g.onlookers().is_empty(), "onlookers: nobody reacts without smoke")
-	goto(g, Vector2i(6, 4))
+	goto(g, Vector2i(5, 2))
 	walk(g, "S")
 	var o: Dictionary = g.onlookers()
 	check(o.get("gardener_now", "") == "self", "onlookers: the gardener sees himself")
@@ -501,9 +513,9 @@ func test_puff_squeezes_you_out() -> void:
 	check(g.s.msg.find("挤") >= 0, "squeeze: told why")
 	# 序章四：过去的园丁不挡路，站在他那一格吐烟不会被挤开
 	var g4 = level("04_two.tscn")
-	goto(g4, Vector2i(5, 3))
+	goto(g4, Vector2i(4, 1))
 	walk(g4, "S")
-	check(g4.s.pos == Vector2i(5, 3), "squeeze: people never push you out")
+	check(g4.s.pos == Vector2i(4, 1), "squeeze: people never push you out")
 
 
 func test_level_editor_doc() -> void:

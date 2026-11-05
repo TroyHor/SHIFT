@@ -1,0 +1,100 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/level_later.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="5"]
+
+[node name="Intro3" type="Node2D" unique_id=440738415]
+script = ExtResource("1")
+title = "序章三 · 挪开的衣橱"
+theme = "在烟雾里挪动的东西，现在也在那里。"
+intro = "钟表匠的店里丢了一块金表。店里只有学徒和房东进出过。"
+past_label = "昨夜 21:00"
+present_label = "今早 9:00"
+tobacco = 2
+presence_clues = PackedStringArray("watch")
+clue_names = {
+"watch": "藏起来的金表"
+}
+suspects = PackedStringArray("学徒", "房东")
+win_text = "学徒低下了头：他把表藏在衣橱底下，想等风头过了再拿出来。"
+lose_text = "房东气得摔门而去。学徒松了一口气。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=1207596467]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAABAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAAAAAAAAAAHAAEAAAABAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAABAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAAAAAAAAAAHAAIAAAABAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAABAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAABAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAABAAAAAAAEAAQAAAABAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAABAAAAAAAHAAQAAAABAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAAAAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAAAAAYAAAABAAAAAAABAAYAAAAAAAAAAAACAAYAAAAAAAAAAAADAAYAAAAAAAAAAAAEAAYAAAAAAAAAAAAFAAYAAAAAAAAAAAAGAAYAAAAAAAAAAAAHAAYAAAAAAAAAAAAIAAYAAAAAAAAAAAAJAAYAAAAAAAAAAAAKAAYAAAAAAAAAAAALAAAAAAABAAAAAAALAAEAAAABAAAAAAALAAIAAAABAAAAAAALAAMAAAABAAAAAAALAAQAAAABAAAAAAALAAUAAAABAAAAAAALAAYAAAABAAAAAAAAAAcAAAABAAAAAAABAAcAAAAAAAAAAAACAAcAAAAAAAAAAAADAAcAAAAAAAAAAAAEAAcAAAAAAAAAAAAFAAcAAAAAAAAAAAAGAAcAAAAAAAAAAAAHAAcAAAAAAAAAAAAIAAcAAAAAAAAAAAAJAAcAAAAAAAAAAAAKAAcAAAAAAAAAAAALAAcAAAABAAAAAAAAAAgAAAABAAAAAAABAAgAAAABAAAAAAACAAgAAAABAAAAAAADAAgAAAABAAAAAAAEAAgAAAABAAAAAAAFAAgAAAABAAAAAAAGAAgAAAABAAAAAAAHAAgAAAABAAAAAAAIAAgAAAABAAAAAAAJAAgAAAABAAAAAAAKAAgAAAABAAAAAAALAAgAAAABAAAAAAA=")
+tile_set = ExtResource("2")
+
+[node name="Start" type="Node2D" parent="." unique_id=1786150297]
+position = Vector2(160, 160)
+script = ExtResource("3")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=1780303206]
+
+[node name="Lock1" type="Node2D" parent="Later" unique_id=2062130065]
+position = Vector2(160, 128)
+script = ExtResource("4")
+kind = "lock"
+display_name = "门锁"
+text = "里屋的门锁上了，锁头还是新的。"
+
+[node name="Ents" type="Node2D" parent="." unique_id=1358605094]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=1032961140]
+position = Vector2(32, 32)
+script = ExtResource("5")
+kind = "inspector"
+era = "present"
+label = "警"
+
+[node name="cache" type="Node2D" parent="Ents" unique_id=1607315926]
+position = Vector2(160, 64)
+script = ExtResource("5")
+kind = "cache"
+era = "present"
+label = "格"
+text = "衣橱原来的位置下有块松动的地板，底下藏着那块金表，表链上缠着一根蓝线头。"
+clue = "watch"
+
+[node name="bench" type="Node2D" parent="Ents" unique_id=98188188]
+position = Vector2(288, 32)
+script = ExtResource("5")
+label = "台"
+sprite = "desk"
+text = "钟表匠的工作台。墙上挂着学徒的蓝围裙，下摆少了一截线。"
+
+[node name="crates" type="Node2D" parent="Ents" unique_id=1168847268]
+position = Vector2(288, 160)
+script = ExtResource("5")
+label = "杂"
+text = "装零件的木箱。"
+
+[node name="plant" type="Node2D" parent="Ents" unique_id=1165504753]
+position = Vector2(32, 160)
+script = ExtResource("5")
+label = "植"
+sprite = "plant"
+text = "一盆快干死的绿萝。"
+
+[node name="wardrobe" type="Node2D" parent="Ents" unique_id=640689456]
+position = Vector2(160, 64)
+script = ExtResource("5")
+kind = "crate"
+era = "past"
+display_name = "衣橱"
+sprite = "wardrobe"
+now_text = "衣橱沉得推不动。脚边的地板上有几道新划痕，昨晚有人挪过它？"
+push = true
+persist = true
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=1041035132]
+position = Vector2(128, 32)
+script = ExtResource("5")
+kind = "source"
+era = "past"
+display_name = "烟丝罐"
+text = "罐子里还剩一撮烟丝，我收下了。"
+amount = 1
+model = "tin"

@@ -1,0 +1,103 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="2"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_jjt7n"]
+[ext_resource type="Script" path="res://scripts/level_later.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="4"]
+
+[node name="Intro2" type="Node2D" unique_id=1333216976]
+script = ExtResource("1")
+title = "序章二 · 烟灰"
+theme = "烟丝烧完了，剩下的灰也有用处。"
+intro = "酒馆老板昨夜在储藏室里被人打晕。今早，储藏室的门被木板钉死了。"
+past_label = "昨夜 0:30"
+present_label = "今早 7:30"
+tobacco = 0
+style = 1
+presence_clues = PackedStringArray("print")
+clue_names = {
+"print": "酒瓶上的指纹"
+}
+suspects = PackedStringArray("酒保", "马车夫")
+culprit = 1
+win_text = "马车夫认了：他半夜溜进储藏室偷酒，被老板撞见，抄起酒瓶就砸。"
+lose_text = "酒保擦着杯子，一言不发。马车夫赶着车出了城。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=374174506]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAMAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAABAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAMAAEAAAABAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAABAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAMAAIAAAABAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAMAAMAAAABAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAABAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAMAAQAAAABAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAMAAUAAAABAAAAAAAAAAYAAAABAAAAAAABAAYAAAABAAAAAAACAAYAAAABAAAAAAADAAYAAAABAAAAAAAEAAYAAAABAAAAAAAFAAYAAAABAAAAAAAGAAYAAAABAAAAAAAHAAYAAAABAAAAAAAIAAYAAAABAAAAAAAJAAYAAAABAAAAAAAKAAYAAAABAAAAAAALAAYAAAABAAAAAAAMAAYAAAABAAAAAAA=")
+tile_set = ExtResource("2_jjt7n")
+
+[node name="Start" type="Node2D" parent="." unique_id=1738001149]
+position = Vector2(64, 96)
+script = ExtResource("2")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=1270967205]
+
+[node name="Planks" type="Node2D" parent="Later" unique_id=1128717744]
+position = Vector2(192, 96)
+script = ExtResource("3")
+kind = "planks"
+display_name = "木板"
+text = "储藏室的门被木板钉死了。钉子还这么亮，是今早才钉上的？"
+
+[node name="Ents" type="Node2D" parent="." unique_id=1874398273]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=953167036]
+position = Vector2(32, 160)
+script = ExtResource("4")
+kind = "inspector"
+era = "present"
+label = "警"
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=1314058605]
+position = Vector2(96, 32)
+script = ExtResource("4")
+kind = "source"
+era = "present"
+label = "烟"
+text = "吧台上有一罐客人落下的烟丝，我收下了。"
+amount = 1
+
+[node name="bar" type="Node2D" parent="Ents" unique_id=645706912]
+position = Vector2(64, 32)
+script = ExtResource("4")
+label = "台"
+sprite = "table"
+text = "吧台上还摆着昨晚没收的杯子。"
+
+[node name="coachman_whip" type="Node2D" parent="Ents" unique_id=252610072]
+position = Vector2(128, 160)
+script = ExtResource("4")
+label = "鞭"
+sprite = "chair"
+text = "长凳上搭着一根马鞭，鞭柄磨得发亮。"
+
+[node name="bottle" type="Node2D" parent="Ents" unique_id=14997942]
+position = Vector2(320, 64)
+script = ExtResource("4")
+kind = "prints"
+era = "present"
+label = "瓶"
+sprite = "bottle"
+text = "我往酒瓶上撒了点烟灰，指纹显了出来：指肚上有一道老茧，像是常年握鞭子磨出来的。"
+hint = "酒瓶上有几道模糊的指印，看不清纹路。要是有点烟灰撒上去就好了。"
+clue = "print"
+
+[node name="barrels" type="Node2D" parent="Ents" unique_id=574785372]
+position = Vector2(256, 32)
+script = ExtResource("4")
+label = "桶"
+sprite = "barrel"
+text = "酒桶，塞子拔掉了一个。"
+
+[node name="tin3" type="Node2D" parent="Ents" unique_id=1018463989]
+position = Vector2(352, 32)
+script = ExtResource("4")
+kind = "source"
+era = "present"
+display_name = "烟丝罐"
+text = "罐子里还剩一撮烟丝，我收下了。"
+amount = 1
+model = "tin"

@@ -1,0 +1,121 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1_4nbla"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_dac7n"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_koikj"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="4_qobtm"]
+
+[node name="Level" type="Node2D" unique_id=209237142]
+script = ExtResource("1_4nbla")
+title = "序章七 · 烟灰缸"
+theme = "过去的人还会继续走。他们走到哪，就看见什么。"
+intro = "邮局的钱柜昨夜被撬。邮差说他整晚都在后屋分信，门房说他一夜没出屋。"
+past_label = "昨夜 23:00"
+present_label = "今早 7:00"
+tobacco = 3
+style = 2
+presence_clues = PackedStringArray("seen")
+clue_names = {
+"seen": "门房的目击"
+}
+suspects = PackedStringArray("邮差", "门房")
+win_text = "邮差半夜提着邮袋穿过大厅，撬开了钱柜。他没想到，烟灰缸边坐着门房。"
+lose_text = "门房被带走时还在喊冤。邮差照常出门送信去了。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=2039890586]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAABAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAAAAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAABAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAAAAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAABAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAAAAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAAAAUAAAABAAAAAAABAAUAAAABAAAAAAACAAUAAAABAAAAAAADAAUAAAABAAAAAAAEAAUAAAABAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAABAAAAAAAIAAUAAAABAAAAAAAJAAUAAAABAAAAAAAKAAUAAAABAAAAAAALAAUAAAAAAAAAAAAAAAYAAAABAAAAAAABAAYAAAAAAAAAAAACAAYAAAAAAAAAAAADAAYAAAAAAAAAAAAEAAYAAAAAAAAAAAAFAAYAAAAAAAAAAAAGAAYAAAABAAAAAAAHAAYAAAAAAAAAAAAIAAYAAAAAAAAAAAAJAAYAAAAAAAAAAAAKAAYAAAAAAAAAAAALAAYAAAAAAAAAAAAAAAcAAAABAAAAAAABAAcAAAAAAAAAAAACAAcAAAAAAAAAAAADAAcAAAAAAAAAAAAEAAcAAAAAAAAAAAAFAAcAAAAAAAAAAAAGAAcAAAABAAAAAAAHAAcAAAAAAAAAAAAIAAcAAAAAAAAAAAAJAAcAAAAAAAAAAAAKAAcAAAAAAAAAAAALAAcAAAAAAAAAAAAMAAAAAAABAAAAAAANAAAAAAABAAAAAAAOAAAAAAABAAAAAAAMAAEAAAAAAAAAAAANAAEAAAAAAAAAAAAOAAEAAAABAAAAAAAMAAIAAAAAAAAAAAANAAIAAAAAAAAAAAAOAAIAAAABAAAAAAAMAAMAAAAAAAAAAAANAAMAAAAAAAAAAAAOAAMAAAABAAAAAAAMAAQAAAAAAAAAAAANAAQAAAAAAAAAAAAOAAQAAAABAAAAAAAMAAUAAAABAAAAAAANAAUAAAABAAAAAAAOAAUAAAABAAAAAAAMAAYAAAAAAAAAAAANAAYAAAAAAAAAAAAOAAYAAAABAAAAAAAMAAcAAAAAAAAAAAANAAcAAAAAAAAAAAAOAAcAAAABAAAAAAAAAAgAAAABAAAAAAABAAgAAAABAAAAAAACAAgAAAABAAAAAAADAAgAAAABAAAAAAAEAAgAAAABAAAAAAAFAAgAAAABAAAAAAAGAAgAAAABAAAAAAAHAAgAAAABAAAAAAAIAAgAAAABAAAAAAAJAAgAAAABAAAAAAAKAAgAAAABAAAAAAALAAgAAAABAAAAAAAMAAgAAAABAAAAAAANAAgAAAABAAAAAAAOAAgAAAABAAAAAAA=")
+tile_set = ExtResource("2_dac7n")
+
+[node name="Start" type="Node2D" parent="." unique_id=1059378003]
+position = Vector2(64, 192)
+script = ExtResource("3_koikj")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=2128671862]
+
+[node name="Ents" type="Node2D" parent="." unique_id=524085629]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=1134848636]
+position = Vector2(32, 224)
+script = ExtResource("4_qobtm")
+kind = "inspector"
+era = "present"
+display_name = "警长"
+sprite = "inspector"
+
+[node name="doorman" type="Node2D" parent="Ents" unique_id=806766290]
+position = Vector2(64, 64)
+script = ExtResource("4_qobtm")
+kind = "npc"
+era = "past"
+display_name = "门房"
+sprite = "porter"
+say = "门房（过去）：（他翻遍了口袋，烟丝早就抽完了。）"
+smoker = true
+now_say = "门房：我一夜都在屋里睡觉，什么也没看见。"
+witness_of = "mailman"
+witness_clue = "seen"
+witness_text = "门房：昨晚不知谁在烟灰缸里留了撮烟丝，我就坐那儿抽了半宿。半夜，邮差提着邮袋从后屋出来，往前厅去了。"
+
+[node name="mailman" type="Node2D" parent="Ents" unique_id=1168461714]
+position = Vector2(384, 224)
+script = ExtResource("4_qobtm")
+kind = "npc"
+era = "past"
+display_name = "邮差"
+sprite = "clerk"
+say = "邮差（过去）：（他把一根铁撬棍塞进了邮袋。）"
+delay = 10
+now_say = "邮差：我整晚都在后屋分信，一步也没出去过。"
+
+[node name="Route1" type="Node2D" parent="Ents/mailman" unique_id=1371537965]
+top_level = true
+position = Vector2(160, 192)
+script = ExtResource("3_koikj")
+
+[node name="Route2" type="Node2D" parent="Ents/mailman" unique_id=1688531028]
+top_level = true
+position = Vector2(384, 224)
+script = ExtResource("3_koikj")
+
+[node name="ashtray" type="Node2D" parent="Ents" unique_id=1344398182]
+position = Vector2(256, 64)
+script = ExtResource("4_qobtm")
+kind = "ashtray"
+era = "past"
+display_name = "烟灰缸"
+sprite = "ashtray"
+text = "一只空烟灰缸。烟瘾犯了的人，闻到烟丝味就会凑过来吧。"
+now_text = "大厅里的烟灰缸。"
+persist = true
+
+[node name="Seat1" type="Node2D" parent="Ents/ashtray" unique_id=782780582]
+top_level = true
+position = Vector2(256, 96)
+script = ExtResource("3_koikj")
+what = "seat"
+
+[node name="till" type="Node2D" parent="Ents" unique_id=1383831325]
+position = Vector2(128, 224)
+script = ExtResource("4_qobtm")
+display_name = "钱柜"
+sprite = "safe"
+text = "钱柜被撬开了，锁扣上有几道铁器的刮痕。"
+past_text = "钱柜还锁得好好的。"
+
+[node name="letters" type="Node2D" parent="Ents" unique_id=1717579943]
+position = Vector2(320, 192)
+script = ExtResource("4_qobtm")
+display_name = "信件"
+sprite = "crates"
+text = "分到一半的信，堆了一桌。"
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=247019001]
+position = Vector2(416, 32)
+script = ExtResource("4_qobtm")
+kind = "source"
+era = "present"
+display_name = "烟丝罐"
+text = "大厅的长椅底下有一罐烟丝，我收下了。"
+amount = 1
+model = "tin"

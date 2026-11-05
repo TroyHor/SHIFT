@@ -13,6 +13,7 @@ theme = "门被砌死了。可那天晚上，它还开着。"
 intro = "当铺的后屋昨夜失窃。今早，漆匠受雇把后屋的门砌死了。"
 past_label = "昨夜 23:00"
 present_label = "今早 8:00"
+tobacco = 2
 presence_clues = PackedStringArray("glove")
 clue_names = {
 "glove": "沾红漆的手套"

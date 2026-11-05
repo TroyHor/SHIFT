@@ -29,6 +29,11 @@ func _init() -> void:
 	test_intro2_ash()
 	test_intro3_push()
 	test_intro4_two()
+	test_intro5_ice()
+	test_intro6_candle()
+	test_intro7_ashtray()
+	test_case3_porter_goes_back()
+	test_static_without_text()
 	test_blocking()
 	test_onlookers()
 	test_puff_squeezes_you_out()
@@ -258,13 +263,14 @@ func test_case2_full() -> void:
 	check(g.ent("ice").pos == Vector2i(16, 4), "c2: ice pushed into the cellar doorway")
 	walk(g, "DL")
 	check(g.later_at(Vector2i(16, 4)) == null, "c2: planks never nailed, ice melted")
-	walk(g, "RRURRR")
+	check(g.thing_at(Vector2i(16, 4)) != null and g.thing_at(Vector2i(16, 4)).get("melted", false), "c2: the ice left a puddle in the doorway")
+	walk(g, "rrurrr")
 	check(g.s.pos == Vector2i(18, 4), "c2: walked into the cellar in the present, got %s" % g.s.pos)
 	walk(g, "RRU" + "LL")
 	check(g.s.tobacco == 3, "c2: cellar tin (anchor behind the planks)")
 	walk(g, "U" + "S" + "U")
 	check(g.s.clues.has("icicle"), "c2: one icicle missing")
-	walk(g, "LL" + "LDDDLDS")
+	walk(g, "ll" + "lDDDLDS")
 	walk(g, "D")
 	check(g.s.mode == "play" and not g.ent("candle").get("lit", false), "c2: bumping the candle never asks about lighting it")
 	g.undo()
@@ -288,10 +294,15 @@ func test_case2_planks_without_ice() -> void:
 func test_case2_ice_melts_only_outside_cellar() -> void:
 	var g = GameLogic.new(case_idx(2))
 	var ice_now := false
+	var puddle := false
 	for e in g.present_ents():
 		if e.get("src", "") == "ice":
-			ice_now = true
+			if e.get("melted", false):
+				puddle = true
+			else:
+				ice_now = true
 	check(not ice_now, "c2: ice in the kitchen is gone by morning")
+	check(puddle and not g.blocks(g.ent("ice").pos), "c2: it leaves a puddle you can walk over")
 
 
 # ---------------- 案件三 ----------------
@@ -390,13 +401,13 @@ func test_intro1_door() -> void:
 	check(g.s.pos == Vector2i(7, 3) and not g.s.cloud, "intro1: walked through in smoke and stepped out into the present")
 	walk(g, "RRD")
 	check(g.s.clues.has("glove"), "intro1: glove found")
-	check(g.s.tobacco == 0, "intro1: the only pinch went on getting in")
+	check(g.s.tobacco == 1, "intro1: one pinch left to get back")
 	goto(g, Vector2i(8, 5))
 	walk(g, "R")
-	check(g.s.tobacco == 1, "intro1: a tin in the back room")
+	check(g.s.tobacco == 2, "intro1: a tin in the back room")
 	goto(g, Vector2i(7, 3))
 	walk(g, "S" + "LL")
-	check(g.s.pos == Vector2i(5, 3) and g.s.tobacco == 0, "intro1: back out with the second pinch")
+	check(g.s.pos == Vector2i(5, 3) and g.s.tobacco == 1, "intro1: back out, one pinch to spare")
 	accuse(g, 1)
 
 
@@ -432,8 +443,9 @@ func test_intro3_push() -> void:
 	walk(g, "u")
 	check(g.s.pos == Vector2i(5, 3) and g.ent("wardrobe").pos == Vector2i(5, 2), "intro3: the wardrobe does not move in the present")
 	goto(g, Vector2i(4, 2))
-	walk(g, "S" + "U")
-	check(g.s.tobacco == 1, "intro3: the old tin in the corner")
+	walk(g, "U")
+	check(g.s.tobacco == 3, "intro3: the tin in the corner")
+	walk(g, "S")
 	walk(g, "r")
 	check(g.ent("wardrobe").pos == Vector2i(5, 2), "intro3: cannot push it out of the smoke")
 	walk(g, "dru")
@@ -444,8 +456,22 @@ func test_intro3_push() -> void:
 	check(g.s.clues.has("watch"), "intro3: cache revealed under the old spot")
 	goto(g, Vector2i(5, 3))
 	walk(g, "S" + "dd")
-	check(g.s.pos == Vector2i(5, 5) and g.s.tobacco == 0, "intro3: back out with the last pinch")
+	check(g.s.pos == Vector2i(5, 5) and g.s.tobacco == 1, "intro3: back out, one pinch to spare")
 	accuse(g, 0)
+	# 不拿烟丝罐，在门口吐烟把衣橱往右推，再从门口走出去：回头进屋拿金表、再出来，烟丝也够
+	var g2 = level("03_push.tscn")
+	walk(g2, "S" + "uu" + "S" + "lu" + "r")
+	check(g2.ent("wardrobe").pos == Vector2i(6, 2), "intro3: pushed aside from the doorway smoke")
+	walk(g2, "dr" + "dd")
+	check(not g2.s.cloud and g2.s.pos == Vector2i(5, 5) and g2.s.tobacco == 1, "intro3: walked out through the door inside the smoke")
+	walk(g2, "S" + "uu")
+	goto(g2, Vector2i(4, 2))
+	walk(g2, "U")
+	g2.interact(Vector2i(5, 2))
+	check(g2.s.clues.has("watch"), "intro3: came back for the watch")
+	goto(g2, Vector2i(5, 3))
+	walk(g2, "S" + "dd")
+	check(g2.s.pos == Vector2i(5, 5), "intro3: and still got out")
 
 
 ## 四：烟雾里看得见过去的园丁时，再问现在的园丁
@@ -460,6 +486,89 @@ func test_intro4_two() -> void:
 	g.interact(Vector2i(5, 4))
 	check(g.s.clues.has("lie"), "intro4: confronted with his past self")
 	accuse(g, 0)
+
+
+## 五：冰块堵在门口，木板就钉不上；到早上冰化了，门是开的
+func test_intro5_ice() -> void:
+	var g = level("11_ice.tscn")
+	var wet = g.thing_at(Vector2i(5, 3))
+	check(wet != null and wet.get("melted", false) and not g.blocks(Vector2i(5, 3)), "intro5: a puddle in front of the door, you can stand on it")
+	check(g.blocks(Vector2i(6, 3)), "intro5: the planks bar the door")
+	goto(g, Vector2i(5, 3))
+	walk(g, "S")
+	check(g.s.cloud and g.s.pos == Vector2i(4, 3) and g.s.msg.find("冰块") >= 0, "intro5: the ice was standing there last night, at %s" % g.s.pos)
+	walk(g, "R")
+	check(g.ent("ice").pos == Vector2i(6, 3), "intro5: pushed the ice into the doorway")
+	walk(g, "l")
+	check(not g.s.cloud and g.later_at(Vector2i(6, 3)) == null, "intro5: the planks were never nailed, the ice melted")
+	goto(g, Vector2i(9, 2))
+	g.interact(Vector2i(10, 2))
+	check(g.s.clues.has("tongs"), "intro5: the ice tongs by the cash box")
+	accuse(g, 0)
+	# 只吐烟、不推冰：冰块把门口挡死，穿不过去
+	var g2 = level("11_ice.tscn")
+	goto(g2, Vector2i(4, 3))
+	walk(g2, "S" + "R")
+	check(g2.ent("ice").pos == Vector2i(5, 3) and g2.s.pos == Vector2i(4, 3), "intro5: from (4,3) the ice can't leave the smoke")
+
+
+## 六：用烟斗点着蜡烛，它烧一整夜，旁边的柴堆到早上烧光了
+func test_intro6_candle() -> void:
+	var g = level("12_candle.tscn")
+	check(g.blocks(Vector2i(6, 3)), "intro6: the woodpile blocks the back room")
+	goto(g, Vector2i(4, 3))
+	walk(g, "S")
+	walk(g, "R")
+	check(not g.ent("candle").get("lit", false), "intro6: bumping does not light it")
+	g.undo()
+	g.interact(Vector2i(5, 3))
+	walk(g, "1")
+	check(g.ent("candle").get("lit", false) and g.s.tobacco == 0, "intro6: lit it with the pipe")
+	walk(g, "ll")
+	check(not g.s.cloud and not g.blocks(Vector2i(6, 3)), "intro6: the woodpile burned down overnight")
+	goto(g, Vector2i(9, 2))
+	g.interact(Vector2i(10, 2))
+	check(g.s.clues.has("purse"), "intro6: the purse behind the woodpile")
+	accuse(g, 0)
+
+
+## 七：在过去的烟灰缸里放烟丝，门房坐过去抽，正好看见半夜走过的邮差
+func test_intro7_ashtray() -> void:
+	var g = level("21_ashtray.tscn")
+	check(not g.d.saw.get("doorman", {}).has("mailman"), "intro7: nobody sees the mailman by default")
+	goto(g, Vector2i(3, 2))
+	g.interact(Vector2i(2, 2))
+	check(not g.s.clues.has("seen"), "intro7: the doorman slept through it")
+	goto(g, Vector2i(8, 3))
+	walk(g, "S")
+	check(g.in_window(Vector2i(8, 4)) and g.route_of("mailman").has(Vector2i(8, 4)), "intro7: the mailman's footprints cross the smoke")
+	g.interact(Vector2i(8, 2))
+	walk(g, "1")
+	check(g.ent("ashtray").get("baited", false), "intro7: baited the ashtray")
+	check(g.d.saw.get("doorman", {}).has("mailman"), "intro7: the doorman now sits there and sees him")
+	walk(g, "lll")
+	check(not g.s.cloud, "intro7: out of the smoke")
+	goto(g, Vector2i(7, 3))
+	g.interact(Vector2i(8, 3))
+	check(g.s.clues.has("seen"), "intro7: the doorman's testimony")
+	accuse(g, 0)
+
+
+## 案件三：行李员半夜去过商人的铺位，又回到自己的铺位（不会停在死者床边）
+func test_case3_porter_goes_back() -> void:
+	var g = GameLogic.new(case_idx(3))
+	var path: Array = g.route_of("porter")
+	check(path.has(Vector2i(6, 9)) and path[path.size() - 1] == Vector2i(19, 8), "c3: porter ends the night back in the C car, got %s" % path[path.size() - 1])
+
+
+## 没写描述的摆设，点了也不出错
+func test_static_without_text() -> void:
+	var g = GameLogic.new(0)
+	g.load_data({"title": "t", "intro": "", "past_label": "", "start": Vector2i(1, 1), "tobacco": 1, "map": ["####", "#..#", "####"],
+		"cold": [], "later": [], "categories": [], "clue_names": {}, "accuse": {"options": [], "answer": 0, "win": "", "lose": ""},
+		"ents": [{"id": "box", "kind": "static", "era": "both", "pos": Vector2i(2, 1), "label": ""}]})
+	g.interact(Vector2i(2, 1))
+	check(g.s.mode == "play" and g.s.msg == "", "static: no text, no error")
 
 
 # ---------------- 操作 ----------------
@@ -497,7 +606,7 @@ func test_onlookers() -> void:
 	var o: Dictionary = g.onlookers()
 	check(o.get("gardener_now", "") == "self", "onlookers: the gardener sees himself")
 	check(not o.has("butler"), "onlookers: the butler is too far away")
-	walk(g, "S")
+	walk(g, "SS")
 	check(g.s.cloud and g.s.msg == "烟斗空了。", "puff: an empty pipe inside the smoke is not a dead end")
 
 

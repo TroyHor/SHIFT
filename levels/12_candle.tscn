@@ -1,0 +1,102 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1_7c1mx"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_mtc67"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_gslwo"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="4_iayh8"]
+
+[node name="Level" type="Node2D" unique_id=110867285]
+script = ExtResource("1_7c1mx")
+title = "序章六 · 一夜的烛"
+theme = "蜡烛会自己烧完这一夜。"
+intro = "磨坊主的一袋金币昨夜不见了。今早，里屋门口不知被谁堆满了干柴。"
+past_label = "昨夜 21:00"
+present_label = "今早 6:30"
+tobacco = 2
+style = 1
+presence_clues = PackedStringArray("purse")
+clue_names = {
+"purse": "红头绳扎的钱袋"
+}
+suspects = PackedStringArray("伙计", "送面粉的车夫")
+win_text = "伙计把金币藏进里屋，再用干柴堵死了门口，打算风头过了再取。"
+lose_text = "车夫赶着马车走了。伙计松了一口气。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=283207137]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAABAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAGAAIAAAABAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAAAAAAAAAAGAAQAAAABAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAAAAYAAAABAAAAAAABAAYAAAABAAAAAAACAAYAAAABAAAAAAADAAYAAAABAAAAAAAEAAYAAAABAAAAAAAFAAYAAAABAAAAAAAGAAYAAAABAAAAAAAHAAYAAAABAAAAAAAIAAYAAAABAAAAAAAJAAYAAAABAAAAAAAKAAYAAAABAAAAAAALAAYAAAABAAAAAAAAAAcA//////////8BAAcA//////////8CAAcA//////////8DAAcA//////////8EAAcA//////////8FAAcA//////////8GAAcA//////////8HAAcA//////////8IAAcA//////////8JAAcA//////////8KAAcA//////////8LAAcA//////////8MAAAAAAABAAAAAAAMAAEAAAABAAAAAAAMAAIAAAABAAAAAAAMAAMAAAABAAAAAAAMAAQAAAABAAAAAAAMAAUAAAABAAAAAAAMAAYAAAABAAAAAAA=")
+tile_set = ExtResource("2_mtc67")
+
+[node name="Start" type="Node2D" parent="." unique_id=1894882895]
+position = Vector2(64, 96)
+script = ExtResource("3_gslwo")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=1355615278]
+
+[node name="Ents" type="Node2D" parent="." unique_id=1560491321]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=1794960737]
+position = Vector2(32, 160)
+script = ExtResource("4_iayh8")
+kind = "inspector"
+era = "present"
+display_name = "警长"
+sprite = "inspector"
+
+[node name="candle" type="Node2D" parent="Ents" unique_id=847943054]
+position = Vector2(160, 96)
+script = ExtResource("4_iayh8")
+kind = "candle"
+era = "past"
+display_name = "蜡烛"
+sprite = "candle"
+text = "一支没点的蜡烛，够烧一整夜。"
+now_text = "一支没点过的蜡烛，就立在柴堆边上。"
+push = true
+persist = true
+
+[node name="woodpile" type="Node2D" parent="Ents" unique_id=759920206]
+position = Vector2(192, 96)
+script = ExtResource("4_iayh8")
+kind = "crate"
+era = "past"
+display_name = "柴堆"
+sprite = "logs"
+now_text = "干柴堆满了里屋的门口，过不去。这么干的柴，一点就着。"
+persist = true
+flammable = true
+
+[node name="bunk" type="Node2D" parent="Ents" unique_id=1363646201]
+position = Vector2(32, 32)
+script = ExtResource("4_iayh8")
+display_name = "床铺"
+sprite = "bed"
+text = "伙计的床铺，枕边放着一卷红头绳。"
+
+[node name="sacks" type="Node2D" parent="Ents" unique_id=1634142363]
+position = Vector2(128, 160)
+script = ExtResource("4_iayh8")
+display_name = "面粉袋"
+sprite = "crates"
+text = "车夫今早刚卸下的面粉袋。"
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=10538086]
+position = Vector2(96, 32)
+script = ExtResource("4_iayh8")
+kind = "source"
+era = "present"
+display_name = "烟丝罐"
+text = "窗台上有一罐烟丝，我收下了。"
+amount = 1
+model = "tin"
+
+[node name="purse" type="Node2D" parent="Ents" unique_id=772945987]
+position = Vector2(320, 64)
+script = ExtResource("4_iayh8")
+kind = "clue"
+era = "present"
+display_name = "钱袋"
+sprite = "glove"
+text = "柴堆后面藏着那袋金币，袋口用一根红头绳扎着。"
+clue = "purse"
+small = true

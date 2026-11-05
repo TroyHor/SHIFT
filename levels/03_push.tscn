@@ -13,7 +13,7 @@ theme = "在烟雾里挪动的东西，现在也在那里。"
 intro = "钟表匠的店里丢了一块金表。店里只有学徒和房东进出过。"
 past_label = "昨夜 21:00"
 present_label = "今早 9:00"
-tobacco = 2
+tobacco = 3
 presence_clues = PackedStringArray("watch")
 clue_names = {
 "watch": "藏起来的金表"
@@ -93,7 +93,7 @@ persist = true
 position = Vector2(128, 32)
 script = ExtResource("5")
 kind = "source"
-era = "past"
+era = "present"
 display_name = "烟丝罐"
 text = "罐子里还剩一撮烟丝，我收下了。"
 amount = 1

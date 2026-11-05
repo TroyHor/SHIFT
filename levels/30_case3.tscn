@@ -128,7 +128,7 @@ script = ExtResource("3")
 
 [node name="Route2" type="Node2D" parent="Ents/porter" unique_id=127806332]
 top_level = true
-position = Vector2(608, 288)
+position = Vector2(608, 256)
 script = ExtResource("3")
 
 [node name="ashtray_a" type="Node2D" parent="Ents" unique_id=1431005334]

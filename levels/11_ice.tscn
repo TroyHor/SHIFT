@@ -1,0 +1,96 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://scripts/level_def.gd" id="1_amrcc"]
+[ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_q0okf"]
+[ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_cunyk"]
+[ext_resource type="Script" path="res://scripts/level_later.gd" id="4_rhmjq"]
+[ext_resource type="Script" path="res://scripts/level_ent.gd" id="5_jq6fn"]
+
+[node name="Level" type="Node2D" unique_id=1866649474]
+script = ExtResource("1_amrcc")
+title = "序章五 · 门口的冰"
+theme = "一夜过去，冰会化成水。"
+intro = "鱼铺后仓的钱箱昨夜被撬。今早，木匠来把后仓的门钉死了。"
+past_label = "昨夜 22:00"
+present_label = "今早 7:00"
+style = 1
+presence_clues = PackedStringArray("tongs")
+clue_names = {
+"tongs": "钱箱边的冰钳"
+}
+suspects = PackedStringArray("送冰的伙计", "木匠")
+win_text = "送冰的伙计昨夜把冰搬进门，顺手撬了钱箱。冰钳落在了箱子边上。"
+lose_text = "木匠收起锤子，一脸莫名其妙。送冰的伙计已经推着车走远了。"
+
+[node name="Map" type="TileMapLayer" parent="." unique_id=210618466]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAGAAAAAAABAAAAAAAHAAAAAAABAAAAAAAIAAAAAAABAAAAAAAJAAAAAAABAAAAAAAKAAAAAAABAAAAAAALAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAAAAAAAAAAGAAEAAAABAAAAAAAHAAEAAAAAAAAAAAAIAAEAAAAAAAAAAAAJAAEAAAAAAAAAAAAKAAEAAAAAAAAAAAALAAEAAAAAAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAABAAAAAAAGAAIAAAABAAAAAAAHAAIAAAAAAAAAAAAIAAIAAAAAAAAAAAAJAAIAAAAAAAAAAAAKAAIAAAAAAAAAAAALAAIAAAAAAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAAAAAAAAAAGAAMAAAAAAAAAAAAHAAMAAAAAAAAAAAAIAAMAAAAAAAAAAAAJAAMAAAAAAAAAAAAKAAMAAAAAAAAAAAALAAMAAAAAAAAAAAAAAAQAAAABAAAAAAABAAQAAAAAAAAAAAACAAQAAAAAAAAAAAADAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAFAAQAAAABAAAAAAAGAAQAAAABAAAAAAAHAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAJAAQAAAAAAAAAAAAKAAQAAAAAAAAAAAALAAQAAAAAAAAAAAAAAAUAAAABAAAAAAABAAUAAAAAAAAAAAACAAUAAAAAAAAAAAADAAUAAAAAAAAAAAAEAAUAAAAAAAAAAAAFAAUAAAAAAAAAAAAGAAUAAAABAAAAAAAHAAUAAAAAAAAAAAAIAAUAAAAAAAAAAAAJAAUAAAAAAAAAAAAKAAUAAAAAAAAAAAALAAUAAAAAAAAAAAAAAAYAAAABAAAAAAABAAYAAAABAAAAAAACAAYAAAABAAAAAAADAAYAAAABAAAAAAAEAAYAAAABAAAAAAAFAAYAAAABAAAAAAAGAAYAAAABAAAAAAAHAAYAAAABAAAAAAAIAAYAAAABAAAAAAAJAAYAAAABAAAAAAAKAAYAAAABAAAAAAALAAYAAAABAAAAAAAAAAcA//////////8BAAcA//////////8CAAcA//////////8DAAcA//////////8EAAcA//////////8FAAcA//////////8GAAcA//////////8HAAcA//////////8IAAcA//////////8JAAcA//////////8KAAcA//////////8LAAcA//////////8MAAAAAAABAAAAAAAMAAEAAAABAAAAAAAMAAIAAAABAAAAAAAMAAMAAAABAAAAAAAMAAQAAAABAAAAAAAMAAUAAAABAAAAAAAMAAYAAAABAAAAAAA=")
+tile_set = ExtResource("2_q0okf")
+
+[node name="Start" type="Node2D" parent="." unique_id=49926564]
+position = Vector2(64, 96)
+script = ExtResource("3_cunyk")
+what = "start"
+
+[node name="Later" type="Node2D" parent="." unique_id=949949933]
+
+[node name="Planks1" type="Node2D" parent="Later" unique_id=944586611]
+position = Vector2(192, 96)
+script = ExtResource("4_rhmjq")
+kind = "planks"
+display_name = "木板"
+text = "后仓的门被木板钉死了，钉子还亮着。"
+
+[node name="Ents" type="Node2D" parent="." unique_id=594306765]
+
+[node name="inspector" type="Node2D" parent="Ents" unique_id=1567969942]
+position = Vector2(32, 160)
+script = ExtResource("5_jq6fn")
+kind = "inspector"
+era = "present"
+display_name = "警长"
+sprite = "inspector"
+
+[node name="ice" type="Node2D" parent="Ents" unique_id=2039096297]
+position = Vector2(160, 96)
+script = ExtResource("5_jq6fn")
+kind = "ice"
+era = "past"
+display_name = "冰块"
+sprite = "ice"
+text = "送冰的伙计搬来的一大块冰。放到早上，也就化成一摊水了吧。"
+now_text = "门口有一摊水，还没干透。昨晚这里放过什么？"
+push = true
+
+[node name="stall" type="Node2D" parent="Ents" unique_id=1989699366]
+position = Vector2(32, 32)
+script = ExtResource("5_jq6fn")
+display_name = "鱼摊"
+sprite = "table"
+text = "鱼摊上还铺着碎冰。"
+
+[node name="tin" type="Node2D" parent="Ents" unique_id=2082568644]
+position = Vector2(96, 160)
+script = ExtResource("5_jq6fn")
+kind = "source"
+era = "present"
+display_name = "烟丝罐"
+text = "柜台下有一罐烟丝，我收下了。"
+amount = 1
+model = "tin"
+
+[node name="cashbox" type="Node2D" parent="Ents" unique_id=95171008]
+position = Vector2(320, 64)
+script = ExtResource("5_jq6fn")
+kind = "clue"
+era = "present"
+display_name = "钱箱"
+sprite = "safe"
+text = "钱箱的锁扣被撬弯了，旁边掉着一把冰钳，钳口还挂着冰碴。"
+clue = "tongs"
+
+[node name="baskets" type="Node2D" parent="Ents" unique_id=1389808781]
+position = Vector2(352, 160)
+script = ExtResource("5_jq6fn")
+display_name = "鱼筐"
+sprite = "crates"
+text = "一堆空鱼筐。"

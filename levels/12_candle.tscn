@@ -54,6 +54,7 @@ text = "一支没点的蜡烛，够烧一整夜。"
 now_text = "一支没点过的蜡烛，就立在柴堆边上。"
 push = true
 persist = true
+small = true
 
 [node name="woodpile" type="Node2D" parent="Ents" unique_id=759920206]
 position = Vector2(192, 96)

@@ -16,6 +16,7 @@ func _init() -> void:
 	test_case1_pouch_shares_the_maid_window()
 	test_anchors_visible()
 	test_case2_full()
+	test_case2_two_smokes_run_dry()
 	test_case2_planks_without_ice()
 	test_case2_ice_melts_only_outside_cellar()
 	test_case3_full()
@@ -251,49 +252,80 @@ func test_anchors_visible() -> void:
 
 # ---------------- 案件二 ----------------
 
-func test_case2_full() -> void:
-	var g = GameLogic.new(case_idx(2))
+## 案件二的前半段：厨房一口烟拿烟丝、对质厨师，再去大堂拿烟灰缸里的半撮
+func c2_kitchen_and_lobby(g) -> void:
 	walk(g, "RRRRRURS" + "LU")
-	check(g.s.tobacco == 2, "c2: cigar box from the past kitchen")
+	check(g.s.tobacco == 1, "c2: cigar box from the past kitchen")
 	walk(g, "RDD")
 	check(g.s.clues.has("lie"), "c2: cook caught")
 	walk(g, "LL" + "LUUUU")
-	check(g.s.tobacco == 3, "c2: ashtray")
-	walk(g, "DDDRRRRRRUUS" + "LUR")
-	check(g.ent("ice").pos == Vector2i(16, 4), "c2: ice pushed into the cellar doorway")
-	walk(g, "DL")
-	check(g.later_at(Vector2i(16, 4)) == null, "c2: planks never nailed, ice melted")
-	check(g.thing_at(Vector2i(16, 4)) != null and g.thing_at(Vector2i(16, 4)).get("melted", false), "c2: the ice left a puddle in the doorway")
-	walk(g, "rrurrr")
-	check(g.s.pos == Vector2i(18, 4), "c2: walked into the cellar in the present, got %s" % g.s.pos)
-	walk(g, "RRU" + "LL")
-	check(g.s.tobacco == 3, "c2: cellar tin (anchor behind the planks)")
-	walk(g, "U" + "S" + "U")
-	check(g.s.clues.has("icicle"), "c2: one icicle missing")
-	walk(g, "ll" + "lDDDLDS")
+	check(g.s.tobacco == 2, "c2: ashtray")
+
+
+func test_case2_full() -> void:
+	var g = GameLogic.new(case_idx(2))
+	c2_kitchen_and_lobby(g)
+	# 冰窖门和账房门只隔一格墙：站在两扇门中间吐一口烟，冰块和蜡烛一起办
+	goto(g, Vector2i(15, 7))
+	check(g.s.pos == Vector2i(15, 7), "c2: you can stand on the morning candle, got %s" % g.s.pos)
+	walk(g, "S")
+	walk(g, "lu" + "R")
+	check(g.ent("ice").pos == Vector2i(16, 6), "c2: ice pushed into the cellar doorway")
+	walk(g, "r" + "D")
+	check(g.ent("candle").pos == Vector2i(15, 8), "c2: candle pushed down, from where the ice stood, next to the woodpile")
 	walk(g, "D")
 	check(g.s.mode == "play" and not g.ent("candle").get("lit", false), "c2: bumping the candle never asks about lighting it")
 	g.undo()
-	g.interact(g.s.pos + Vector2i.DOWN)  # 点击蜡烛才会问要不要点火
+	walk(g, "d")
+	g.interact(Vector2i(15, 8))  # 点击蜡烛才会问要不要点火
 	walk(g, "1")
-	check(g.ent("candle").get("lit", false) and g.s.tobacco == 0, "c2: lit the candle with the pipe")
-	walk(g, "LDR")
-	check(g.ent("candle").pos == Vector2i(15, 9), "c2: candle next to the woodpile")
-	walk(g, "L")
-	walk(g, "RRRRRRR")
+	check(g.ent("candle").get("lit", false) and g.s.tobacco == 0 and g.s.cloud, "c2: lit the candle in the same smoke")
+	walk(g, "u")
+	check(not g.s.cloud, "c2: the smoke ran out right after")
+	check(g.later_at(Vector2i(16, 6)) == null, "c2: planks never nailed, ice melted")
+	check(g.thing_at(Vector2i(16, 6)) != null and g.thing_at(Vector2i(16, 6)).get("melted", false), "c2: the ice left a puddle in the doorway")
+	walk(g, "rr")
+	check(g.s.pos == Vector2i(17, 6), "c2: walked into the cellar in the present, got %s" % g.s.pos)
+	walk(g, "RRRUUU")
+	check(g.s.tobacco == 1, "c2: cellar tin (anchor behind the planks)")
+	walk(g, "LL" + "U" + "S" + "U")
+	check(g.s.clues.has("icicle"), "c2: one icicle missing")
+	walk(g, "ddll" + "lddrrrd" + "R")
 	check(g.s.clues.has("ledger"), "c2: woodpile burned overnight, ledger reached")
-	walk(g, "LLLLLLLUULLLLUUUL1")
+	goto(g, Vector2i(6, 5))
+	walk(g, "U1")
 	check(g.s.outcome == "win", "c2: won")
+
+
+## 冰块和蜡烛分两口烟办，烟丝就不够：这关要想到两扇门在同一口烟里
+func test_case2_two_smokes_run_dry() -> void:
+	var g = GameLogic.new(case_idx(2))
+	c2_kitchen_and_lobby(g)
+	goto(g, Vector2i(14, 6))
+	walk(g, "S" + "R")
+	check(g.ent("ice").pos == Vector2i(15, 6), "c2: from (14,6) the doorway is outside the smoke, the ice won't go")
+	g.undo()
+	g.undo()
+	goto(g, Vector2i(15, 7))
+	walk(g, "S" + "lu" + "R")
+	check(g.ent("ice").pos == Vector2i(16, 6), "c2: ice in the doorway with its own smoke")
+	walk(g, "lll")
+	check(not g.s.cloud and g.s.tobacco == 1, "c2: one pinch left after the ice")
+	goto(g, Vector2i(15, 7))
+	walk(g, "S" + "lu" + "r" + "D" + "d")
+	g.interact(Vector2i(15, 8))
+	walk(g, "1")
+	check(g.ent("candle").get("lit", false) == false and g.s.tobacco == 0, "c2: no pinch left to light the candle")
 
 
 func test_case2_planks_without_ice() -> void:
 	var g = GameLogic.new(case_idx(2))
-	check(g.later_at(Vector2i(16, 4)) != null, "c2: cellar door nailed shut by default")
-	# 烟丝总数刚好够"推冰"这条路：硬穿木板要多花一口烟（推开冰、穿进去、出来），就不够了
+	check(g.later_at(Vector2i(16, 6)) != null, "c2: cellar door nailed shut by default")
+	# 烟丝总数刚好 4 撮：厨房、两扇门中间那一口、点蜡烛、冰锥架。冰块和蜡烛分开办就不够
 	var supply: int = g.L.tobacco
 	for a in g.anchors():
 		supply += a.amount
-	check(supply == 5, "c2: exactly 5 pinches on the map (lie, ice, rack, candle window, lighting), got %d" % supply)
+	check(supply == 4, "c2: exactly 4 pinches on the map, got %d" % supply)
 
 
 func test_case2_ice_melts_only_outside_cellar() -> void:

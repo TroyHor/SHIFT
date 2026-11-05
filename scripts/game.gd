@@ -11,7 +11,7 @@ extends RefCounted
 ##  - 现在 = 过去 + 这一夜的流逝：
 ##      * 过去推过的家具，现在还在那里（persist）。
 ##      * 后来才砌的墙 / 钉的门 / 上的锁：如果过去那一格被东西占着，或者负责的人没走到，就不会出现。
-##      * 点燃的蜡烛烧一整夜，四邻的可燃物到现在会烧光；冰块到现在会化掉，除非在冷的格子上。
+##      * 点燃的蜡烛烧一整夜，四邻的可燃物到现在会烧光；冰块到现在会化成一摊水，除非在冷的格子上。
 ##      * 过去的人在这一刻之后还会走动；他们现在在哪、看见了谁，都由这段路决定。
 
 const SMOKE_TURNS := 8
@@ -269,6 +269,11 @@ func _derive() -> void:
 		if kind == "ice":
 			if L.cold.has(e.pos):
 				present.append(_echo(e, e.pos, {}))
+			else:
+				# 化了：到早上只剩一摊水，不挡路，但看得见
+				var wet: String = e.get("now_text", "")
+				present.append(_echo(e, e.pos, {"label": "水", "small": true, "melted": true,
+					"now_text": wet if wet != "" else "地上有一摊水，还没干透。"}))
 			continue
 		if kind == "candle":
 			if e.get("lit", false):
@@ -401,7 +406,7 @@ func move(dir: Vector2i) -> void:
 	if era_at(t) == "present":
 		var lt = later_at(t)
 		if lt != null:
-			s.msg = lt.text
+			s.msg = lt.get("text", "")
 			return
 	# 推东西靠撞：走向一件推得动的东西，就把它往前推一格（人留在原地）
 	var e = thing_at(t)
@@ -508,7 +513,7 @@ func choose(n: int) -> void:
 			e.gone = true
 			for id in e.get("erases", []):
 				ent(id).gone = true
-			s.msg = e.text + "（烟丝 +%d）" % e.amount
+			s.msg = e.get("text", "") + "（烟丝 +%d）" % e.amount
 		"gift":
 			s.tobacco -= 1
 			e.gone = true
@@ -632,7 +637,7 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 		if e.get("burnt", false):
 			s.msg = "只剩一堆灰烬。"
 		else:
-			s.msg = e.now_text if e.now_text != "" else "%s纹丝不动。" % src.get("name", "它")
+			s.msg = e.get("now_text", "") if e.get("now_text", "") != "" else "%s纹丝不动。" % src.get("name", "它")
 		return
 	match e.kind:
 		"inspector":
@@ -647,33 +652,33 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 			_talk(e, past)
 		"source":
 			if past and not e.get("erases", []).is_empty():
-				_offer("take", e.id, e.ask + "\n[1] 拿走（烟丝 +%d）    [Esc] 算了" % e.amount)
+				_offer("take", e.id, e.get("ask", "") + "\n[1] 拿走（烟丝 +%d）    [Esc] 算了" % e.amount)
 			else:
 				e.gone = true
 				s.tobacco += e.amount
-				s.msg = e.text + "（烟丝 +%d）" % e.amount
+				s.msg = e.get("text", "") + "（烟丝 +%d）" % e.amount
 		"prints":
 			if s.clues.has(e.clue):
 				s.msg = "指纹已经拓下来了。"
 			elif s.ash > 0:
 				s.ash -= 1
-				s.msg = e.text + "（烟灰 -1）" + _add_clue(e.clue)
+				s.msg = e.get("text", "") + "（烟灰 -1）" + _add_clue(e.clue)
 			else:
-				s.msg = e.hint
+				s.msg = e.get("hint", "")
 		"cache", "clue":
 			if s.clues.has(e.clue):
 				s.msg = "这里已经查过了。"
 			else:
-				s.msg = e.text + _add_clue(e.clue)
+				s.msg = e.get("text", "") + _add_clue(e.clue)
 		"container":
 			if e.get("taken", false):
-				s.msg = e.empty
+				s.msg = e.get("empty", "")
 			else:
 				e.taken = true
-				s.msg = e.text + _add_clue(e.clue)
+				s.msg = e.get("text", "") + _add_clue(e.clue)
 		"compare":
 			s.seen[e.pair + "@" + era] = true
-			s.msg = e.text
+			s.msg = e.get("text", "")
 			var other := "past" if era == "present" else "present"
 			if s.seen.get(e.pair + "@" + other, false):
 				var clue := _compare_clue(e.pair)
@@ -700,7 +705,7 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 				else:
 					_offer("bait", e.id, desc + "\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
 		"static":
-			s.msg = e.get("past_text", e.text) if past else e.text
+			s.msg = e.get("past_text", e.get("text", "")) if past else e.get("text", "")
 		_:
 			s.msg = ""
 

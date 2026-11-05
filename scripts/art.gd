@@ -83,6 +83,8 @@ static func sprite_for(e: Dictionary) -> String:
 	var s: String = SPRITES.get(key, "")
 	if e.get("burnt", false):
 		s = "wax" if key == "candle" else "embers"
+	if e.get("melted", false):
+		s = "puddle"
 	return s
 
 
@@ -518,6 +520,10 @@ static func thing(ci: CanvasItem, cell: Rect2, sprite: String, e: Dictionary, pa
 			else:
 				ci.draw_line(c + Vector2(-7, 3) * u, c + Vector2(6, -2) * u, Color(0, 0, 0, 0.5), 2 * u)
 				ci.draw_circle(c + Vector2(7, -2.5) * u, 2.5 * u, Color(0, 0, 0, 0.5))
+		"puddle":
+			ci.draw_circle(c + Vector2(-2, 1) * u, 9 * u, Color(grade(Color("#7aa6c0"), past), 0.45))
+			ci.draw_circle(c + Vector2(5, -3) * u, 5 * u, Color(grade(Color("#7aa6c0"), past), 0.45))
+			ci.draw_arc(c + Vector2(-3, 0) * u, 5 * u, -2.6, -1.2, 8, Color(1, 1, 1, 0.5), u)
 		"ice":
 			ci.draw_rect(Rect2(inset.position + Vector2(2, 3) * u, inset.size), Color(0, 0, 0, 0.3))
 			ci.draw_rect(inset, Color(grade(Color("#a8d8ee"), past), 0.85))

@@ -10,7 +10,7 @@
 script = ExtResource("1_ojmnv")
 title = "案件一 · 反锁的书房"
 theme = "空间：在过去挪动的东西，现在也在那里。"
-intro = "富商死在反锁的书房。按 Shift 吐一口烟，看看案发当晚。"
+intro = "富商死在反锁的书房里，门窗都从里面锁着。"
 past_label = "案发当晚 22:50"
 present_label = "次日清晨 9:00"
 presence_clues = PackedStringArray("lie", "print", "witness")

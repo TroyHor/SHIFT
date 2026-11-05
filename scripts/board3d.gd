@@ -99,7 +99,7 @@ var _mats := {}
 var _puff_tex: GradientTexture2D
 var _smoke_puffs: Array = []  # [MeshInstance3D, StandardMaterial3D, phase]
 var _pipe_puffs: Array = []
-var _feet: Array = []  # [StandardMaterial3D, step]
+var _feet: Array = []  # [StandardMaterial3D, step, 亮度]
 var _ghosts: Array = []  # StandardMaterial3D
 var _flames: Array = []  # [Node3D, OmniLight3D or null]
 var _glows: Array = []  # StandardMaterial3D
@@ -849,6 +849,10 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 			_part(n, _torus(0.08, 0.1), _m(Color("#2a2a2a")), Vector3(0, 0.25, 0), Vector3(PI / 2, 0, 0), Vector3(1, 1, 0.6))
 			if e.era == "past":
 				_part(n, _box(Vector3(0.34, 0.025, 0.05)), _m(Color("#c8ccd4"), 0.2, 0.9), Vector3(0, 0.26, 0.04), Vector3(0, 0.4, 0))
+		"puddle":
+			var wm := _m(Color(0.42, 0.56, 0.66, 0.55), 0.02, 0.2)
+			_part(n, _cyl(0.34, 0.34, 0.006, 20), wm, Vector3(-0.05, 0.004, 0.03), Vector3.ZERO, Vector3(1, 1, 0.8))
+			_part(n, _cyl(0.16, 0.16, 0.006, 16), wm, Vector3(0.2, 0.004, -0.14))
 		"ice":
 			_part(n, _box(Vector3(0.62, 0.62, 0.62)), _m(Color(0.66, 0.85, 0.93, 0.78), 0.05), Vector3(0, 0.31, 0))
 			_part(n, _box(Vector3(0.4, 0.4, 0.4)), _raw(Color(1, 1, 1, 0.25), 0.05), Vector3(0, 0.31, 0))
@@ -908,11 +912,13 @@ func _anchors() -> void:
 		_tin(n, true, false)
 
 
-## 烟雾里能看到的人，脚下画出他们接下来要走的脚印
+## 烟雾里能看到的人，脚下画出他们接下来要走的脚印。
+## 人不在烟雾里、但这一夜会从烟雾里走过的，也画出烟雾里那一段（淡一些，终点不打叉）
 func _routes() -> void:
 	for e in game.past_ents():
-		if e.kind != "npc" or not e.has("route") or not game.in_window(e.pos):
+		if e.kind != "npc" or not e.has("route"):
 			continue
+		var inside: bool = game.in_window(e.pos)
 		var path: Array = game.route_of(e.id)
 		var steps := 0
 		for i in range(1, path.size()):
@@ -921,6 +927,8 @@ func _routes() -> void:
 			if a == b:
 				continue
 			steps += 1
+			if not inside and not (game.in_window(a) or game.in_window(b)):
+				continue
 			var dir := Vector3(b.x - a.x, 0, b.y - a.y)
 			var side := Vector3(-dir.z, 0, dir.x) * 0.12
 			for fk in [0.25, 0.75]:
@@ -929,7 +937,9 @@ func _routes() -> void:
 				var p := at(a, 0.015).lerp(at(b, 0.015), fk) + side * sgn
 				var fm := _part(dyn, _plane(0.12, 0.2), m, p, Vector3(0, atan2(dir.x, dir.z), 0))
 				fm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				_feet.append([m, steps])
+				_feet.append([m, steps, 1.0 if inside else 0.8])
+		if not inside and not game.in_window(path[path.size() - 1]):
+			continue
 		var end := at(path[path.size() - 1], 0.02)
 		for r in [PI / 4, -PI / 4]:
 			var x := _part(dyn, _box(Vector3(0.42, 0.01, 0.05)), _glow(Art.GOLD, 1.2), end, Vector3(0, r, 0))
@@ -997,7 +1007,7 @@ func _process(delta: float) -> void:
 		g.albedo_color.a = 0.25 + 0.35 * (0.5 + 0.5 * sin(t * 2.5))
 	for f in _feet:
 		var k := fposmod(t * 1.2 - f[1] * 0.1, 1.0)
-		f[0].albedo_color.a = 0.3 + 0.6 * k
+		f[0].albedo_color.a = (0.3 + 0.6 * k) * f[2]
 	for fl in _flames:
 		var fk := 0.5 + 0.5 * sin(t * 11.0 + fl[0].position.x * 20.0)
 		fl[0].scale = Vector3(0.7, 1.2 + 0.4 * fk, 0.7) if fl[1] != null else Vector3.ONE * (0.7 + 0.5 * fk)

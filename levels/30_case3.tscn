@@ -13,7 +13,7 @@ theme = "人的去向：过去的人还会继续走。改变他们的路，就�
 intro = "一位商人死在 A 车厢的卧铺上。烟雾里的金色脚印，是那个人接下来要走的路。"
 past_label = "案发当晚 23:10"
 present_label = "次日清晨 6:00"
-tobacco = 2
+tobacco = 0
 style = 2
 presence_clues = PackedStringArray("seen_by_conductor", "seen_by_passenger")
 weapon_clues = PackedStringArray("wrench")
@@ -128,7 +128,7 @@ script = ExtResource("3")
 
 [node name="Route2" type="Node2D" parent="Ents/porter" unique_id=127806332]
 top_level = true
-position = Vector2(608, 288)
+position = Vector2(608, 256)
 script = ExtResource("3")
 
 [node name="ashtray_a" type="Node2D" parent="Ents" unique_id=1431005334]

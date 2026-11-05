@@ -37,7 +37,7 @@ void fragment() {
 }
 """
 
-## 烟雾窗口：老胶片的颗粒和划痕，只盖在 3x3 上
+## 烟雾窗口：老照片的颗粒、划痕和一点暗角，只盖在已经展开的那一段上
 const SMOKE_SHADER := """
 shader_type canvas_item;
 uniform float density = 0.0;
@@ -48,10 +48,10 @@ float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545
 void fragment() {
 	vec2 p = FRAGCOORD.xy;
 	float g = hash(floor(p / 2.0) + floor(time_s * 18.0)) - 0.5;
-	float scratch = step(0.993, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
-	float wv = smoothstep(0.3, 0.75, length(UV - 0.5));
-	vec3 col = mix(vec3(0.22, 0.12, 0.04), vec3(0.95, 0.88, 0.7), scratch);
-	COLOR = vec4(col, 0.02 + abs(g) * 0.1 * (0.4 + density) + wv * 0.25 + scratch * 0.3);
+	float scratch = step(0.994, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
+	float wv = smoothstep(0.35, 0.8, length((UV - 0.5) * vec2(1.0, 1.2)));
+	vec3 col = mix(vec3(0.16, 0.08, 0.03), vec3(0.95, 0.86, 0.66), scratch);
+	COLOR = vec4(col, abs(g) * 0.09 * (0.4 + density) + wv * 0.22 + scratch * 0.25);
 }
 """
 
@@ -421,17 +421,18 @@ func _folder(i: int, r: Rect2, full: bool) -> void:
 
 # ---------------------------------------------------------------- 世界上的标注
 
-## 烟雾窗口的四个角在屏幕上的位置
+## 烟雾窗口已经展开的那一段，四个角在屏幕上的位置
 func _window_corners() -> PackedVector2Array:
-	var c := Board3D.at(game.s.center)
+	var c: Vector3 = world.window_center()
+	var hw: float = minf(world.half_width(), 1.5)
 	var pts := PackedVector2Array()
-	for o in [Vector3(-1.5, 0, -1.5), Vector3(1.5, 0, -1.5), Vector3(1.5, 0, 1.5), Vector3(-1.5, 0, 1.5)]:
+	for o in [Vector3(-hw, 0, -1.5), Vector3(hw, 0, -1.5), Vector3(hw, 0, 1.5), Vector3(-hw, 0, 1.5)]:
 		pts.append(world.screen_v(c + o))
 	return pts
 
 
 func _draw_smoke_fx() -> void:
-	if title or editing or not game.s.cloud:
+	if title or editing or world.half_width() <= 0.02:
 		return
 	var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
 	smoke_fx.draw_polygon(_window_corners(), PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]), uvs)
@@ -441,7 +442,7 @@ func _draw_smoke_fx() -> void:
 func _draw_tags() -> void:
 	var me: Vector2i = game.s.pos
 	for e in game.visible_ents():
-		if e.kind not in ["npc", "inspector"]:
+		if e.kind not in ["npc", "inspector"] or not world.is_shown(e):
 			continue
 		var dp: Vector2i = e.pos - me
 		if maxi(absi(dp.x), absi(dp.y)) > 2:

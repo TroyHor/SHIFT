@@ -101,13 +101,16 @@ static func entity(ci: CanvasItem, cell: Rect2, e: Dictionary, past: bool, t: fl
 
 # ---------------------------------------------------------------- 基础
 
+## 调色（与 board3d.gd 地面着色器里的 grade 相同）：
+## 现在是墨蓝水墨，保留三成本色；过去是褐色老照片，保留一成多本色
 static func grade(c: Color, past: bool) -> Color:
 	var l := c.get_luminance()
 	if past:
-		var sep := Color("#3a2614").lerp(Color("#f4e2bc"), clampf(l * 1.1, 0.0, 1.0))
-		return Color(sep.lerp(c, 0.22), c.a)
-	var cool := Color(l * 0.78, l * 0.88, l * 1.12)
-	return Color(cool.lerp(c, 0.38).darkened(0.08), c.a)
+		var sep := Color(0.13, 0.085, 0.05).lerp(Color(0.82, 0.73, 0.58), clampf(l * 1.15, 0.0, 1.0))
+		return Color(sep.lerp(c, 0.12), c.a)
+	var k := clampf(l / 0.85, 0.0, 1.0)
+	var ink := Color(0.045, 0.05, 0.075).lerp(Color(0.6, 0.62, 0.7), k * k * (3.0 - 2.0 * k))
+	return Color(ink.lerp(c, 0.3), c.a)
 
 
 static func h(x: float, y: float) -> float:

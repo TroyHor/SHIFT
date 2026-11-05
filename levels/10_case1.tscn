@@ -42,7 +42,7 @@ what = "start"
 position = Vector2(512, 160)
 script = ExtResource("4_txwf5")
 display_name = "砖墙"
-text = "这扇门被砖砌死了，灰浆还没干透。"
+text = "灰浆还没干透，这扇门是案发后才砌死的？"
 
 [node name="Ents" type="Node2D" parent="." unique_id=957579078]
 
@@ -106,8 +106,8 @@ script = ExtResource("5_gucdn")
 kind = "prints"
 era = "present"
 label = "罐"
-text = "你往空罐子上撒了点烟灰，显出一枚指纹，是管家的。"
-hint = "空烟丝罐上有几道模糊的指印。"
+text = "我往空罐子上撒了点烟灰，显出一枚指纹，是管家的。"
+hint = "空烟丝罐上有几道模糊的指印，得撒点烟灰才看得清。"
 clue = "print"
 model = "tin"
 
@@ -117,8 +117,8 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "past"
 label = "罐"
-text = "你拿走了老爷的烟丝罐。"
-ask = "老爷的烟丝罐，里面还有两撮上好的烟丝。"
+text = "我拿走了老爷的烟丝罐。"
+ask = "老爷的烟丝罐，里面还有两撮上好的烟丝。今早桌上那只空罐子，就是它吧。"
 amount = 2
 erases = PackedStringArray("jar_now")
 
@@ -135,7 +135,7 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "present"
 label = "缸"
-text = "烟灰缸里有半截没抽完的雪茄。你把它拆开，装进了烟丝袋。"
+text = "烟灰缸里有半截没抽完的雪茄。我把它拆开，装进了烟丝袋。"
 amount = 1
 
 [node name="cache" type="Node2D" parent="Ents" unique_id=1187547910]
@@ -164,7 +164,7 @@ kind = "crate"
 era = "past"
 display_name = "书架"
 label = "柜"
-now_text = "书架被钉死在地板上，纹丝不动。"
+now_text = "书架被钉死在地板上，钉子还是新的。它脚下那块地板，颜色好像不太一样？"
 push = true
 persist = true
 
@@ -175,7 +175,7 @@ kind = "crate"
 era = "past"
 display_name = "衣橱"
 label = "橱"
-now_text = "沉重的衣橱堵着后门。"
+now_text = "沉重的衣橱堵着后门，现在怎么也推不动。"
 push = true
 persist = true
 
@@ -192,7 +192,7 @@ script = ExtResource("5_gucdn")
 kind = "container"
 era = "past"
 label = "箱"
-text = "保险箱里放着一份新遗嘱：「……府中仆役一律遣散，不留分文。」你把它揣进怀里。"
+text = "保险箱里放着一份新遗嘱：「……府中仆役一律遣散，不留分文。」我把它揣进怀里。"
 empty = "保险箱里只剩些旧账本。"
 clue = "will"
 
@@ -202,7 +202,7 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "present"
 label = "烟"
-text = "密室角落里有一罐烟丝。"
+text = "密室角落里有一罐烟丝，我收下了。"
 amount = 1
 
 [node name="garden_tin" type="Node2D" parent="Ents" unique_id=2123939470]
@@ -211,7 +211,7 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "present"
 label = "烟"
-text = "花园长椅底下，园丁藏了一罐烟丝。"
+text = "花园长椅底下，园丁藏了一罐烟丝。我收下了。"
 amount = 1
 
 [node name="bench" type="Node2D" parent="Ents" unique_id=799692512]
@@ -227,7 +227,7 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "past"
 label = "袋"
-text = "门厅桌上落着一小袋烟丝。"
+text = "门厅桌上落着一小袋烟丝，我收下了。"
 amount = 1
 
 [node name="crates" type="Node2D" parent="Ents" unique_id=258151075]

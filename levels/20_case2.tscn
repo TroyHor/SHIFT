@@ -42,7 +42,7 @@ position = Vector2(512, 128)
 script = ExtResource("4_i7yir")
 kind = "planks"
 display_name = "钉死的门"
-text = "冰窖的门被木板钉死了，钉子是新的。"
+text = "冰窖的门被木板钉死了。钉子是新的，今早才钉上的？昨晚这门洞还敞着。"
 
 [node name="Ents" type="Node2D" parent="." unique_id=1314541065]
 
@@ -90,7 +90,7 @@ script = ExtResource("5_p78oj")
 kind = "source"
 era = "past"
 label = "盒"
-text = "厨房架子上有一盒老板私藏的烟丝。"
+text = "厨房架子上有一盒老板私藏的烟丝，我收下了。"
 amount = 2
 
 [node name="ashtray_now" type="Node2D" parent="Ents" unique_id=428844606]
@@ -99,7 +99,7 @@ script = ExtResource("5_p78oj")
 kind = "source"
 era = "present"
 label = "缸"
-text = "大堂烟灰缸里有客人留下的半撮烟丝。"
+text = "大堂烟灰缸里有客人留下的半撮烟丝，我收下了。"
 amount = 1
 
 [node name="ice" type="Node2D" parent="Ents" unique_id=1306330755]
@@ -109,6 +109,7 @@ kind = "ice"
 era = "past"
 display_name = "冰块"
 label = "冰"
+text = "一大块冰。放到早上，也就化成一摊水了吧。"
 push = true
 
 [node name="rack_now" type="Node2D" parent="Ents" unique_id=1632396489]
@@ -136,6 +137,7 @@ kind = "candle"
 era = "past"
 display_name = "蜡烛"
 label = "烛"
+text = "一支没点的蜡烛，够烧一整夜。"
 push = true
 persist = true
 
@@ -146,7 +148,7 @@ kind = "crate"
 era = "past"
 display_name = "柴堆"
 label = "柴"
-now_text = "账房门口堆满了柴火，过不去。"
+now_text = "账房门口堆满了干柴，过不去。这么干的柴，一点就着。"
 persist = true
 flammable = true
 
@@ -165,7 +167,7 @@ script = ExtResource("5_p78oj")
 kind = "source"
 era = "present"
 label = "烟"
-text = "冰窖角落有一罐受潮的烟丝，还能抽。"
+text = "冰窖角落有一罐受潮的烟丝，还能抽，我收下了。"
 amount = 1
 
 [node name="horse" type="Node2D" parent="Ents" unique_id=1380968676]

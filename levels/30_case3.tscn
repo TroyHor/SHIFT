@@ -44,7 +44,7 @@ position = Vector2(512, 224)
 script = ExtResource("4_v1sna")
 kind = "lock"
 display_name = "锁上的门"
-text = "通往 C 车厢的门锁上了。列车员每晚 23:20 锁门。"
+text = "通往 C 车厢的门锁上了。听说列车员每晚 23:20 来锁门。"
 by = "conductor"
 
 [node name="At" type="Node2D" parent="Later/Lock" unique_id=865856699]
@@ -68,7 +68,7 @@ script = ExtResource("5_nxaov")
 kind = "source"
 era = "present"
 label = "烟"
-text = "死者行李里有一小包烟丝。"
+text = "死者行李里有一小包烟丝，我收下了。"
 amount = 1
 
 [node name="conductor" type="Node2D" parent="Ents" unique_id=1642420216]
@@ -137,6 +137,7 @@ script = ExtResource("5_nxaov")
 kind = "ashtray"
 era = "past"
 label = "缸"
+text = "一只空烟灰缸。烟瘾犯了的人，闻到烟丝味就会凑过来吧。"
 now_text = "连接处的烟灰缸。"
 persist = true
 
@@ -152,6 +153,7 @@ script = ExtResource("5_nxaov")
 kind = "ashtray"
 era = "past"
 label = "缸"
+text = "一只空烟灰缸。烟瘾犯了的人，闻到烟丝味就会凑过来吧。"
 now_text = "过道边的烟灰缸。"
 persist = true
 
@@ -201,7 +203,7 @@ script = ExtResource("5_nxaov")
 kind = "source"
 era = "present"
 label = "烟"
-text = "行李员的铺位下有一包烟丝。"
+text = "行李员的铺位下有一包烟丝，我收下了。"
 amount = 1
 
 [node name="table1" type="Node2D" parent="Ents" unique_id=2097184392]
@@ -223,5 +225,5 @@ script = ExtResource("5_nxaov")
 kind = "source"
 era = "past"
 label = "包"
-text = "餐车柜台上放着一包没拆的烟丝。"
+text = "餐车柜台上放着一包没拆的烟丝，我收下了。"
 amount = 2

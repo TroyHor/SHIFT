@@ -40,7 +40,7 @@ position = Vector2(192, 96)
 script = ExtResource("3")
 kind = "planks"
 display_name = "木板"
-text = "储藏室的门被木板钉死了，钉子还很亮。"
+text = "储藏室的门被木板钉死了。钉子还这么亮，是今早才钉上的？"
 
 [node name="Ents" type="Node2D" parent="." unique_id=1874398273]
 
@@ -57,7 +57,7 @@ script = ExtResource("4")
 kind = "source"
 era = "present"
 label = "烟"
-text = "吧台上放着一罐客人落下的烟丝。"
+text = "吧台上有一罐客人落下的烟丝，我收下了。"
 amount = 1
 
 [node name="bar" type="Node2D" parent="Ents" unique_id=645706912]
@@ -81,8 +81,8 @@ kind = "prints"
 era = "present"
 label = "瓶"
 sprite = "bottle"
-text = "你往酒瓶上撒了点烟灰，指纹显了出来：指肚上有一道老茧，像是常年握鞭子磨出来的。"
-hint = "地上的酒瓶上有几道模糊的指印，看不清纹路。"
+text = "我往酒瓶上撒了点烟灰，指纹显了出来：指肚上有一道老茧，像是常年握鞭子磨出来的。"
+hint = "酒瓶上有几道模糊的指印，看不清纹路。要是有点烟灰撒上去就好了。"
 clue = "print"
 
 [node name="barrels" type="Node2D" parent="Ents" unique_id=574785372]
@@ -98,6 +98,6 @@ script = ExtResource("4")
 kind = "source"
 era = "present"
 display_name = "烟丝罐"
-text = "罐子里还有一撮烟丝。"
+text = "罐子里还剩一撮烟丝，我收下了。"
 amount = 1
 model = "tin"

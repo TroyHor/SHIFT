@@ -76,5 +76,6 @@ kind = "crate"
 era = "past"
 display_name = "衣橱"
 sprite = "wardrobe"
+now_text = "衣橱沉得推不动。脚边的地板上有几道新划痕，昨晚有人挪过它？"
 push = true
 persist = true

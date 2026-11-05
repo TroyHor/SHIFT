@@ -37,7 +37,7 @@ what = "start"
 position = Vector2(192, 96)
 script = ExtResource("3")
 display_name = "砖墙"
-text = "门洞用新砖砌死了，砖缝里沾着红漆。"
+text = "门洞好像是刚刚用新砖砌死的？砖缝里还沾着红漆。"
 
 [node name="Ents" type="Node2D" parent="." unique_id=171416907]
 
@@ -53,7 +53,7 @@ position = Vector2(96, 160)
 script = ExtResource("4")
 label = "柜"
 sprite = "desk"
-text = "当铺的柜台，账本摊开着。"
+text = "当铺的柜台，账本还摊开着。"
 
 [node name="crates" type="Node2D" parent="Ents" unique_id=1979029013]
 position = Vector2(32, 160)
@@ -67,7 +67,7 @@ script = ExtResource("4")
 label = "箱"
 sprite = "safe"
 text = "保险柜开着，里面空了。"
-past_text = "保险柜锁得好好的。"
+past_text = "保险柜还锁得好好的。"
 
 [node name="glove" type="Node2D" parent="Ents" unique_id=1602827180]
 position = Vector2(288, 128)
@@ -92,6 +92,6 @@ script = ExtResource("4")
 kind = "source"
 era = "present"
 display_name = "烟丝罐"
-text = "罐子里还有一撮烟丝。"
+text = "罐子里还剩一撮烟丝，我收下了。"
 amount = 1
 model = "tin"

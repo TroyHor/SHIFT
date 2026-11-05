@@ -449,7 +449,7 @@ func interact(p: Vector2i) -> void:
 	if e == null:
 		return
 	if not in_reach(p):
-		s.msg = "太远了，走近一点。"
+		s.msg = "太远了，得走近点。"
 		return
 	_snapshot()
 	s.msg = ""
@@ -470,11 +470,11 @@ func puff() -> void:
 	s.cloud = true
 	s.center = s.pos
 	s.turns = SMOKE_TURNS
-	s.msg = "你吐出一口烟，烟雾里浮现出%s。（烟灰 +1）" % L.past_label
+	s.msg = "我吐出一口烟，烟雾里浮现出%s。（烟灰 +1）" % L.past_label
 	if blocks(s.pos):
 		var e = thing_at(s.pos)
 		s.pos = _nearest_free(s.pos)
-		s.msg += "\n那天晚上，这里放着%s，你被挤到了一边。" % (e.get("name", "东西") if e != null else "东西")
+		s.msg += "\n那天晚上，这里放着%s，我被挤到了一边。" % (e.get("name", "东西") if e != null else "东西")
 
 
 func choose(n: int) -> void:
@@ -513,15 +513,15 @@ func choose(n: int) -> void:
 			s.tobacco -= 1
 			e.gone = true
 			s.flags[e.gift.flag] = true
-			s.msg = "你分出一撮烟丝。（烟丝 -1）\n" + e.gift.done
+			s.msg = "我分出一撮烟丝。（烟丝 -1）\n" + e.gift.done
 		"bait":
 			s.tobacco -= 1
 			e.baited = true
-			s.msg = "你在烟灰缸里留下一撮烟丝。（烟丝 -1）"
+			s.msg = "我在烟灰缸里留下一撮烟丝。（烟丝 -1）"
 		"candle":
 			s.tobacco -= 1
 			e.lit = true
-			s.msg = "你把烟斗里的火种倒在烛芯上。（烟丝 -1）"
+			s.msg = "我把烟斗里的火种倒在烛芯上。（烟丝 -1）"
 	_derive()
 
 
@@ -529,7 +529,7 @@ func cancel() -> void:
 	if s.mode == "choice":
 		s.mode = "play"
 		s.choice = {}
-		s.msg = "你决定再想想。"
+		s.msg = "还是再想想。"
 
 
 func undo() -> void:
@@ -554,7 +554,7 @@ func _snapshot() -> void:
 func _after_action() -> void:
 	if s.cloud:
 		if not in_window(s.pos):
-			_close_cloud("你走出烟雾，回到了现在。")
+			_close_cloud("我走出烟雾，回到了现在。")
 		else:
 			s.turns -= 1
 			if s.turns <= 0:
@@ -573,7 +573,7 @@ func _close_cloud(reason: String) -> void:
 	s.msg = reason if s.msg == "" else s.msg + "\n" + reason
 	if blocks(s.pos):
 		s.pos = _nearest_free(s.center)
-		s.msg += "\n现实合拢，把你挤回了烟雾升起的地方。"
+		s.msg += "\n现实合拢，把我挤回了烟雾升起的地方。"
 
 
 func _nearest_free(from: Vector2i) -> Vector2i:
@@ -621,7 +621,7 @@ func _push(e: Dictionary, dir: Vector2i) -> void:
 		s.msg = "推不动，那边被挡住了。"
 	else:
 		e.pos = tgt
-		s.msg = "你推动了%s。" % e.get("name", "它")
+		s.msg = "我把%s推开了一格。" % e.get("name", "它")
 
 
 func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
@@ -684,18 +684,21 @@ func _bump(e: Dictionary, dir: Vector2i, era: String) -> void:
 			if e.get("lit", false):
 				s.msg = "蜡烛在烧。"
 			elif s.tobacco <= 0:
-				s.msg = "一支没点的蜡烛。"
+				s.msg = e.get("text", "") if e.get("text", "") != "" else "一支没点的蜡烛。"
 			else:
-				_offer("candle", e.id, "一支没点的蜡烛。\n[1] 用烟斗点燃（烟丝 -1）    [Esc] 算了", dir)
+				var desc: String = e.get("text", "") if e.get("text", "") != "" else "一支没点的蜡烛。"
+				_offer("candle", e.id, desc + "\n[1] 用烟斗点燃（烟丝 -1）    [Esc] 算了", dir)
 		"ice", "crate":
 			s.msg = e.get("text", "")
 		"ashtray":
 			if e.get("baited", false):
 				s.msg = "烟灰缸里已经放了烟丝。"
-			elif s.tobacco <= 0:
-				s.msg = "一只空烟灰缸。"
 			else:
-				_offer("bait", e.id, "一只空烟灰缸。\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
+				var desc: String = e.get("text", "") if e.get("text", "") != "" else "一只空烟灰缸。"
+				if s.tobacco <= 0:
+					s.msg = desc
+				else:
+					_offer("bait", e.id, desc + "\n[1] 放一撮烟丝（烟丝 -1）    [Esc] 算了")
 		"static":
 			s.msg = e.get("past_text", e.text) if past else e.text
 		_:

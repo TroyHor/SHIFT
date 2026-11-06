@@ -96,6 +96,50 @@ func era_at(p: Vector2i) -> String:
 	return "past" if in_window(p) else "present"
 
 
+## 这一格是什么地点（LevelArea 的名字）；不在任何地点里（比如门洞）返回 ""。
+## 几块区域叠在一起时算最小的那一块
+func area_at(p: Vector2i) -> String:
+	var best := ""
+	var best_n := 1 << 30
+	for a in L.get("areas", []):
+		var r: Rect2i = a.rect
+		if r.has_point(p) and r.get_area() < best_n:
+			best_n = r.get_area()
+			best = a.name
+	return best
+
+
+## 一段话里提到了哪些地点（按名字和别名找），返回 [[开始位置, 长度, 地点名], ...]，按位置排好、不重叠
+func area_mentions(text: String) -> Array:
+	var words: Array = []
+	for a in L.get("areas", []):
+		for w in [a.name] + Array(a.get("aliases", [])):
+			if String(w) != "":
+				words.append([String(w), String(a.name)])
+	words.sort_custom(func(x, y): return x[0].length() > y[0].length())  # 长的先找："行李车厢"先于"车厢"
+	var taken := PackedByteArray()
+	taken.resize(text.length())
+	var out: Array = []
+	for w in words:
+		var from := 0
+		while true:
+			var i := text.find(w[0], from)
+			if i < 0:
+				break
+			var free := true
+			for k in w[0].length():
+				if taken[i + k] != 0:
+					free = false
+					break
+			if free:
+				for k in w[0].length():
+					taken[i + k] = 1
+				out.append([i, w[0].length(), w[1]])
+			from = i + 1
+	out.sort_custom(func(x, y): return x[0] < y[0])
+	return out
+
+
 func ent(id: String) -> Dictionary:
 	for e in s.ents:
 		if e.id == id:

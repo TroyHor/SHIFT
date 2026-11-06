@@ -36,6 +36,7 @@ const LABELS := {
 	"presence_clues": "在场证据（id）", "weapon_clues": "凶器证据（id）", "motive_clues": "动机证据（id）",
 	"clue_names": "证据名字（每行 id=名字）", "suspects": "嫌疑人", "culprit": "凶手是第几个（从 0 数）",
 	"win_text": "指认对了", "lose_text": "指认错了", "by": "谁去建造（人物 id）", "past_look": "过去这一格是什么",
+	"size": "大小（宽 × 高，格子数）", "aliases": "对话里的别的叫法（会一起高亮）", "show_sign": "在墙上挂名牌",
 }
 const ENUM_NAMES := {
 	"npc": "人物", "inspector": "警长", "source": "烟丝源", "prints": "指纹", "cache": "暗格", "clue": "证物",
@@ -50,7 +51,7 @@ const STORY_FIELDS := ["say", "text", "past_text", "now_text", "hint", "ask", "e
 
 const SCRIPT_GROUPS := ["文字", "物件", "人物：过去", "人物：现在", "人物：走完这一夜之后", "证据", "指认"]
 
-enum Tool { SELECT, FLOOR, WALL, OUTDOOR, COLD, PLACE, LATER, START, MARK }
+enum Tool { SELECT, FLOOR, WALL, OUTDOOR, COLD, PLACE, LATER, START, MARK, AREA }
 
 var world: Board3D
 var doc: LevelDoc
@@ -62,6 +63,7 @@ var _sel_path := NodePath("")
 var _drag_from = null
 var _press_cell = null
 var _painting := false
+var _area_from = null  # 正在拖出一个地点：从哪一格开始
 var _hover = null
 var _preview_dirty := false
 var _preview_t := 0.0
@@ -234,7 +236,7 @@ func _build_ui() -> void:
 	add_child(bar)
 	var group := ButtonGroup.new()
 	for t in [[Tool.SELECT, "选择/拖动"], [Tool.FLOOR, "地面"], [Tool.WALL, "墙"], [Tool.OUTDOOR, "室外"],
-			[Tool.COLD, "冷地"], [Tool.START, "起点"], [Tool.MARK, "路线点"]]:
+			[Tool.COLD, "冷地"], [Tool.START, "起点"], [Tool.MARK, "路线点"], [Tool.AREA, "地点"]]:
 		var b := Button.new()
 		b.text = t[1]
 		b.toggle_mode = true
@@ -243,6 +245,7 @@ func _build_ui() -> void:
 		bar.add_child(b)
 		tool_btns[t[0]] = b
 	tool_btns[Tool.SELECT].button_pressed = true
+	tool_btns[Tool.AREA].tooltip_text = "在地图上拖出一块长方形，就是一个地点（房间、院子……）；名牌会挂在它上面那面墙上"
 	tool_btns[Tool.MARK].tooltip_text = "先选中过去的人物（加路线）、烟灰缸（座位）或有建造者的建造（走到哪），再点格子；右键删掉最后一个"
 	var pb := Button.new()
 	pb.text = "放："
@@ -450,6 +453,15 @@ func _board_input(ev: InputEvent) -> void:
 		return
 	if not ev.pressed:
 		_painting = false
+		if tool == Tool.AREA and _area_from != null:
+			var a0: Vector2i = _area_from
+			_area_from = null
+			var a1: Vector2i = _hover if _hover != null else a0
+			var r := Rect2i(a0.min(a1), (a1 - a0).abs() + Vector2i.ONE)
+			doc.snapshot()
+			_select(doc.add_area(r))
+			_changed(true)
+			return
 		# 按下和松开在同一格就只是选中；拖动按地面格子的位移来挪（点在人身上拖也一样）
 		var to = null
 		if _drag_from != null and p != null and _press_cell != null:
@@ -492,6 +504,8 @@ func _board_input(ev: InputEvent) -> void:
 			doc.snapshot()
 			doc.move_to(doc.start(), p)
 			_changed(true)
+		Tool.AREA:
+			_area_from = p
 		Tool.MARK:
 			var k := LevelDoc.marker_kind(selected) if selected != null else ""
 			if k == "":
@@ -585,6 +599,26 @@ func _draw_overlay() -> void:
 		return
 	overlay.draw_rect(Rect2(BOARD.position, BOARD.size), Color(0.88, 0.71, 0.42, 0.25), false, 1.0)
 	var gold := Color("#e0b46a")
+	# 地点：绿色框，左上角写名字
+	var green := Color("#7ec8a0")
+	for a in doc.areas():
+		var ar: Rect2i = a.rect()
+		var on: bool = a == selected
+		var q := PackedVector2Array()
+		for o in [Vector2(0, 0), Vector2(ar.size.x, 0), Vector2(ar.size), Vector2(0, ar.size.y), Vector2(0, 0)]:
+			q.append(world.screen_v(Vector3(ar.position.x + o.x, 0.03, ar.position.y + o.y)))
+		overlay.draw_polyline(q, Color.WHITE if on else Color(green, 0.75), 3.0 if on else 1.5)
+		if a.show_sign or on:
+			_ctext(a.display_name, world.screen_v(Vector3(ar.position.x + 0.2, 0.05, ar.position.y + 0.25)) + Vector2(18, 4), green, 11)
+	if tool == Tool.AREA and _area_from != null and _hover != null:
+		var a0: Vector2i = _area_from
+		var a1: Vector2i = _hover
+		var lo := a0.min(a1)
+		var hi := a0.max(a1) + Vector2i.ONE
+		var q := PackedVector2Array()
+		for o in [Vector2(lo.x, lo.y), Vector2(hi.x, lo.y), Vector2(hi.x, hi.y), Vector2(lo.x, hi.y), Vector2(lo.x, lo.y)]:
+			q.append(world.screen_v(Vector3(o.x, 0.03, o.y)))
+		overlay.draw_polyline(q, Color.WHITE, 2.0)
 	# 起点
 	var sp := doc.cell(doc.start())
 	_outline(sp, gold, 2.0, 0.1)
@@ -747,6 +781,20 @@ func _field(box: Control, n: Object, pr: Dictionary, struct_change := false) -> 
 				le.text = v
 				le.text_changed.connect(func(s): on_set.call(s))
 				row.add_child(le)
+		TYPE_VECTOR2I:
+			row.add_child(lab)
+			var hb := HBoxContainer.new()
+			row.add_child(hb)
+			var sx := SpinBox.new()
+			var sy := SpinBox.new()
+			for sp in [sx, sy]:
+				sp.min_value = 1
+				sp.max_value = 40
+				hb.add_child(sp)
+			sx.value = v.x
+			sy.value = v.y
+			sx.value_changed.connect(func(x): on_set.call(Vector2i(int(x), int(sy.value))))
+			sy.value_changed.connect(func(y): on_set.call(Vector2i(int(sx.value), int(y))))
 		TYPE_PACKED_STRING_ARRAY:
 			row.add_child(lab)
 			var le := LineEdit.new()
@@ -820,16 +868,25 @@ func _build_sel_tab() -> void:
 	_clear(sel_box)
 	var n := selected
 	if n == null or not is_instance_valid(n):
-		_note(sel_box, "在地图上点一个人、物件、建造或起点。\n\n工具栏：\n· 地面 / 墙 / 室外 / 冷地：拖动画格子\n· 放：选一种东西，点格子放下\n· 建造：后来才砌的墙、钉的木板、上的锁\n· 路线点：给过去的人物加路线\n· 看：现在 / 烟雾里，切换两个时代\n\nCtrl+Z 撤销  Ctrl+S 保存  F5 试玩")
+		_note(sel_box, "在地图上点一个人、物件、建造或起点。\n\n工具栏：\n· 地面 / 墙 / 室外 / 冷地：拖动画格子\n· 放：选一种东西，点格子放下\n· 建造：后来才砌的墙、钉的木板、上的锁\n· 路线点：给过去的人物加路线\n· 地点：拖出一块长方形，给房间起名字\n· 看：现在 / 烟雾里，切换两个时代\n\nCtrl+Z 撤销  Ctrl+S 保存  F5 试玩")
 		return
 	if n == doc.start():
 		_header(sel_box, "起点")
 		_note(sel_box, "侦探从这一格开局。用 选择 拖动，或用 起点 工具点格子。")
 		return
-	var title := "后来的建造" if n is LevelLater else "%s · %s" % [ENUM_NAMES.get(n.kind, n.kind), ENUM_NAMES.get(n.era, n.era)]
+	var title := ""
+	if n is LevelArea:
+		title = "地点"
+	elif n is LevelLater:
+		title = "后来的建造"
+	else:
+		title = "%s · %s" % [ENUM_NAMES.get(n.kind, n.kind), ENUM_NAMES.get(n.era, n.era)]
 	_header(sel_box, title)
+	if n is LevelArea:
+		_note(sel_box, "名牌挂在这块区域上面那面墙上。对话里出现这个名字（或别的叫法）会高亮，名牌跟着亮。不是长方形的地点，用几块同名的拼起来，只给一块挂名牌。")
 	_note(sel_box, "在第 %d, %d 格。" % [doc.cell(n).x, doc.cell(n).y])
-	_id_field(sel_box, n)
+	if not (n is LevelArea):
+		_id_field(sel_box, n)
 	var group := ""
 	for pr in _props(n):
 		if not _group_fits(n, pr.group):
@@ -838,7 +895,7 @@ func _build_sel_tab() -> void:
 			group = pr.group
 			if group != "":
 				_header(sel_box, "— " + group + " —")
-		_field(sel_box, n, pr, pr.name in ["kind", "era", "push", "persist", "small", "model", "sprite", "smoker", "by"])
+		_field(sel_box, n, pr, pr.name in ["kind", "era", "push", "persist", "small", "model", "sprite", "smoker", "by", "size", "show_sign"])
 	var mk := LevelDoc.marker_kind(n)
 	if mk != "":
 		_note(sel_box, {"route": "路线：%d 站。用 路线点 工具在地图上点。", "seat": "座位：用 路线点 工具点一格。",

@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_gehm8"]
 [ext_resource type="Script" path="res://scripts/level_later.gd" id="4_i7yir"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="5_p78oj"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Case2" type="Node2D" unique_id=790046137]
 script = ExtResource("1_c14dq")
@@ -44,6 +45,59 @@ kind = "planks"
 display_name = "钉死的门"
 text = "冰窖的门被木板钉死了。钉子是新的，今早才钉上的？昨晚这门洞还敞着。"
 past_look = "doorway"
+
+[node name="Areas" type="Node2D" parent="." unique_id=226938843]
+
+[node name="hall" type="Node2D" parent="Areas" unique_id=1875651415]
+position = Vector2(160, 96)
+script = ExtResource("9_area")
+display_name = "大堂"
+size = Vector2i(5, 8)
+aliases = PackedStringArray("前台")
+
+[node name="kitchen" type="Node2D" parent="Areas" unique_id=1314302567]
+position = Vector2(352, 96)
+script = ExtResource("9_area")
+display_name = "厨房"
+size = Vector2i(5, 8)
+
+[node name="cellar" type="Node2D" parent="Areas" unique_id=365862673]
+position = Vector2(544, 96)
+script = ExtResource("9_area")
+display_name = "冰窖"
+size = Vector2i(4, 4)
+
+[node name="office" type="Node2D" parent="Areas" unique_id=579402028]
+position = Vector2(544, 256)
+script = ExtResource("9_area")
+display_name = "账房"
+size = Vector2i(4, 3)
+
+[node name="yard" type="Node2D" parent="Areas" unique_id=1454258844]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "院子"
+size = Vector2i(21, 1)
+
+[node name="yard2" type="Node2D" parent="Areas" unique_id=1447402586]
+position = Vector2(32, 64)
+script = ExtResource("9_area")
+display_name = "院子"
+size = Vector2i(3, 11)
+show_sign = false
+
+[node name="yard3" type="Node2D" parent="Areas" unique_id=1351976312]
+position = Vector2(128, 384)
+script = ExtResource("9_area")
+display_name = "院子"
+size = Vector2i(18, 1)
+show_sign = false
+
+[node name="alley" type="Node2D" parent="Areas" unique_id=232847736]
+position = Vector2(704, 32)
+script = ExtResource("9_area")
+display_name = "后巷"
+size = Vector2i(3, 12)
 
 [node name="Ents" type="Node2D" parent="." unique_id=1314541065]
 

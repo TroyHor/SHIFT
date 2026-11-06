@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/level_marker.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/level_later.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Intro3" type="Node2D" unique_id=440738415]
 script = ExtResource("1")
@@ -39,6 +40,21 @@ script = ExtResource("4")
 kind = "lock"
 display_name = "门锁"
 text = "里屋的门锁上了，锁头还是新的。"
+
+[node name="Areas" type="Node2D" parent="." unique_id=1863673106]
+
+[node name="shop" type="Node2D" parent="Areas" unique_id=1250797845]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "店面"
+size = Vector2i(10, 7)
+aliases = PackedStringArray("店里")
+
+[node name="inner" type="Node2D" parent="Areas" unique_id=302142728]
+position = Vector2(128, 32)
+script = ExtResource("9_area")
+display_name = "里屋"
+size = Vector2i(3, 3)
 
 [node name="Ents" type="Node2D" parent="." unique_id=1358605094]
 

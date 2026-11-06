@@ -38,6 +38,7 @@ func _init() -> void:
 	test_blocking()
 	test_onlookers()
 	test_puff_squeezes_you_out()
+	test_areas()
 	test_level_editor_doc()
 	test_editor_keeps_tileset()
 	print("ALL TESTS PASSED" if failures == 0 else "%d FAILURE(S)" % failures)
@@ -710,3 +711,36 @@ func test_editor_keeps_tileset() -> void:
 	check(txt.contains('path="res://levels/tiles.tres"') and txt.contains("tile_set = ExtResource"), "editor: tileset saved as a reference")
 	DirAccess.remove_absolute(path)
 	doc.close()
+
+
+## 地点：每关都标了；一格算最小的那块区域；门洞不属于任何地点；对话里的别名能找到对应的地点
+func test_areas() -> void:
+	for i in Levels.count():
+		var g = GameLogic.new(i)
+		check(not g.L.get("areas", []).is_empty(), "level %d has areas" % i)
+		# 每个地点至少有一块挂名牌，区域都在地图里
+		var signed := {}
+		for a in g.L.areas:
+			var r: Rect2i = a.rect
+			check(r.position.x >= 0 and r.position.y >= 0 and r.end.x <= g.W and r.end.y <= g.H, "%s inside map (level %d)" % [a.name, i])
+			if a.sign:
+				signed[a.name] = true
+		for a in g.L.areas:
+			check(signed.has(a.name), "%s has a sign (level %d)" % [a.name, i])
+	var g = GameLogic.new(case_idx(1))
+	check(g.area_at(Vector2i(12, 6)) == "书房", "case 1 study")
+	check(g.area_at(Vector2i(19, 8)) == "密室", "case 1 secret room")
+	check(g.area_at(Vector2i(2, 8)) == "花园", "case 1 garden bench")
+	check(g.area_at(Vector2i(23, 7)) == "后院", "case 1 backyard")
+	check(g.area_at(Vector2i(16, 9)) == "", "case 1 doorway is no area")
+	check(g.area_at(g.L.start) == "门厅", "case 1 starts in the foyer")
+	var m: Array = g.area_mentions("女仆：我去后院抽了一会儿。回来时，书房的门开着。")
+	check(m.size() == 2 and m[0][2] == "后院" and m[1][2] == "书房", "case 1 mentions")
+	g = GameLogic.new(case_idx(3))
+	check(g.area_at(Vector2i(9, 6)) == "连接处", "case 3 vestibule wins over car A")
+	check(g.area_at(Vector2i(5, 9)) == "A 车厢", "case 3 merchant berth in car A")
+	check(g.area_at(Vector2i(18, 6)) == "C 车厢", "case 3 porter's car")
+	m = g.area_mentions("行李员：我整晚都在行李车厢。")
+	check(m.size() == 1 and m[0][2] == "C 车厢" and m[0][1] == 4, "alias finds car C")
+	m = g.area_mentions("通往 C 车厢的门")
+	check(m.size() == 1 and m[0][1] == 4, "name with a space")

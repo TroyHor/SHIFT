@@ -4,6 +4,7 @@
 [ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_mtc67"]
 [ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_gslwo"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="4_iayh8"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Level" type="Node2D" unique_id=110867285]
 script = ExtResource("1_7c1mx")
@@ -32,6 +33,20 @@ script = ExtResource("3_gslwo")
 what = "start"
 
 [node name="Later" type="Node2D" parent="." unique_id=1355615278]
+
+[node name="Areas" type="Node2D" parent="." unique_id=294804716]
+
+[node name="outer" type="Node2D" parent="Areas" unique_id=1283364967]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "外屋"
+size = Vector2i(5, 5)
+
+[node name="inner" type="Node2D" parent="Areas" unique_id=1011648019]
+position = Vector2(224, 32)
+script = ExtResource("9_area")
+display_name = "里屋"
+size = Vector2i(5, 5)
 
 [node name="Ents" type="Node2D" parent="." unique_id=1560491321]
 

@@ -6,6 +6,7 @@ extends Node2D
 ##   Start  —— 侦探的开局位置
 ##   Later  —— 后来的建造（砖墙、木板、门锁），每个是一个 LevelLater
 ##   Ents   —— 人物和物件，每个是一个 LevelEnt；节点名就是它的 id
+##   Areas  —— 地点（房间、院子……），每个是一个 LevelArea：名牌挂在墙上，对话里提到会高亮（可以没有）
 ## 在 Godot 里打开这个场景按 F6，就会直接试玩这一关。
 
 const TILE := 32
@@ -94,6 +95,12 @@ func to_level() -> Dictionary:
 			later.append(n.to_dict())
 	var ents: Array = []
 	_collect_ents(get_node("Ents"), ents)
+	var areas: Array = []
+	var an := get_node_or_null("Areas")
+	if an != null:
+		for n in an.get_children():
+			if n is LevelArea and n.display_name != "":
+				areas.append(n.to_dict())
 	return {
 		"title": title,
 		"theme": theme,
@@ -110,6 +117,7 @@ func to_level() -> Dictionary:
 		"clue_names": clue_names.duplicate(),
 		"accuse": {"options": Array(suspects), "answer": culprit, "win": win_text, "lose": lose_text},
 		"ents": ents,
+		"areas": areas,
 	}
 
 

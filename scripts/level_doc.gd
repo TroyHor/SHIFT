@@ -65,7 +65,7 @@ static func blank(file: String) -> LevelDoc:
 	start.name = "Start"
 	start.what = "start"
 	r.add_child(start)
-	for n in ["Later", "Ents"]:
+	for n in ["Later", "Areas", "Ents"]:
 		var g := Node2D.new()
 		g.name = n
 		r.add_child(g)
@@ -221,6 +221,35 @@ func laters() -> Array:
 	return out
 
 
+## 地点（LevelArea）。旧的关卡没有 Areas 节点，要加地点时再建
+func areas() -> Array:
+	var out: Array = []
+	var an := root.get_node_or_null("Areas")
+	if an != null:
+		for c in an.get_children():
+			if c is LevelArea:
+				out.append(c)
+	return out
+
+
+func add_area(r: Rect2i) -> LevelArea:
+	var an := root.get_node_or_null("Areas")
+	if an == null:
+		an = Node2D.new()
+		an.name = "Areas"
+		root.add_child(an)
+		root.move_child(an, root.get_node("Ents").get_index())
+		an.owner = root
+	var a := LevelArea.new()
+	a.display_name = "新地点"
+	a.size = r.size
+	an.add_child(a)
+	a.name = "Area%d" % an.get_child_count()
+	a.owner = root
+	a.position = Vector2(r.position) * TILE
+	return a
+
+
 func start() -> LevelMarker:
 	return root.get_node("Start")
 
@@ -229,7 +258,7 @@ static func cell(n: Node2D) -> Vector2i:
 	return LevelDef.cell_of(n)
 
 
-## 一格里所有能选中的东西：人物物件、后来的建造、起点
+## 一格里所有能选中的东西：人物物件、后来的建造、起点、地点
 func things_at(p: Vector2i) -> Array:
 	var out: Array = []
 	for e in ents():
@@ -240,7 +269,13 @@ func things_at(p: Vector2i) -> Array:
 			out.append(l)
 	if cell(start()) == p:
 		out.append(start())
-	return out
+	# 地点放在最后：点空地就选中脚下的地点（叠在一起时小的先）
+	var here: Array = []
+	for a in areas():
+		if a.rect().has_point(p):
+			here.append(a)
+	here.sort_custom(func(x, y): return x.rect().get_area() < y.rect().get_area())
+	return out + here
 
 
 func ent_by_id(id: String) -> LevelEnt:

@@ -4,6 +4,7 @@
 [ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_dac7n"]
 [ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_koikj"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="4_qobtm"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Level" type="Node2D" unique_id=209237142]
 script = ExtResource("1_4nbla")
@@ -32,6 +33,32 @@ script = ExtResource("3_koikj")
 what = "start"
 
 [node name="Later" type="Node2D" parent="." unique_id=2128671862]
+
+[node name="Areas" type="Node2D" parent="." unique_id=1339319143]
+
+[node name="porter" type="Node2D" parent="Areas" unique_id=1357440634]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "门房"
+size = Vector2i(3, 4)
+
+[node name="lobby" type="Node2D" parent="Areas" unique_id=951864842]
+position = Vector2(160, 32)
+script = ExtResource("9_area")
+display_name = "大厅"
+size = Vector2i(9, 4)
+
+[node name="front" type="Node2D" parent="Areas" unique_id=206492238]
+position = Vector2(32, 192)
+script = ExtResource("9_area")
+display_name = "前厅"
+size = Vector2i(5, 2)
+
+[node name="back" type="Node2D" parent="Areas" unique_id=574769608]
+position = Vector2(224, 192)
+script = ExtResource("9_area")
+display_name = "后屋"
+size = Vector2i(7, 2)
 
 [node name="Ents" type="Node2D" parent="." unique_id=524085629]
 

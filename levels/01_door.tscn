@@ -5,6 +5,7 @@
 [ext_resource type="TileSet" path="res://levels/tiles.tres" id="2_unal0"]
 [ext_resource type="Script" path="res://scripts/level_later.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Intro1" type="Node2D" unique_id=1877835049]
 script = ExtResource("1")
@@ -39,6 +40,20 @@ position = Vector2(192, 96)
 script = ExtResource("3")
 display_name = "砖墙"
 text = "门洞好像是刚刚用新砖砌死的？砖缝里还沾着红漆。"
+
+[node name="Areas" type="Node2D" parent="." unique_id=795425564]
+
+[node name="shop" type="Node2D" parent="Areas" unique_id=423946139]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "店面"
+size = Vector2i(5, 5)
+
+[node name="back" type="Node2D" parent="Areas" unique_id=947876999]
+position = Vector2(224, 32)
+script = ExtResource("9_area")
+display_name = "后屋"
+size = Vector2i(5, 5)
 
 [node name="Ents" type="Node2D" parent="." unique_id=171416907]
 

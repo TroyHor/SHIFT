@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/level_marker.gd" id="3_6eflo"]
 [ext_resource type="Script" path="res://scripts/level_later.gd" id="4_txwf5"]
 [ext_resource type="Script" path="res://scripts/level_ent.gd" id="5_gucdn"]
+[ext_resource type="Script" path="res://scripts/level_area.gd" id="9_area"]
 
 [node name="Case1" type="Node2D" unique_id=693598665]
 script = ExtResource("1_ojmnv")
@@ -43,6 +44,52 @@ position = Vector2(512, 160)
 script = ExtResource("4_txwf5")
 display_name = "砖墙"
 text = "灰浆还没干透，这扇门是案发后才砌死的？"
+
+[node name="Areas" type="Node2D" parent="." unique_id=1189709946]
+
+[node name="foyer" type="Node2D" parent="Areas" unique_id=561060838]
+position = Vector2(160, 96)
+script = ExtResource("9_area")
+display_name = "门厅"
+size = Vector2i(4, 8)
+
+[node name="study" type="Node2D" parent="Areas" unique_id=180521324]
+position = Vector2(320, 96)
+script = ExtResource("9_area")
+display_name = "书房"
+size = Vector2i(6, 8)
+
+[node name="secret" type="Node2D" parent="Areas" unique_id=284570285]
+position = Vector2(544, 96)
+script = ExtResource("9_area")
+display_name = "密室"
+size = Vector2i(4, 8)
+
+[node name="garden" type="Node2D" parent="Areas" unique_id=1031247021]
+position = Vector2(32, 32)
+script = ExtResource("9_area")
+display_name = "花园"
+size = Vector2i(21, 1)
+
+[node name="garden2" type="Node2D" parent="Areas" unique_id=998017869]
+position = Vector2(32, 64)
+script = ExtResource("9_area")
+display_name = "花园"
+size = Vector2i(3, 11)
+show_sign = false
+
+[node name="garden3" type="Node2D" parent="Areas" unique_id=250013383]
+position = Vector2(128, 384)
+script = ExtResource("9_area")
+display_name = "花园"
+size = Vector2i(18, 1)
+show_sign = false
+
+[node name="backyard" type="Node2D" parent="Areas" unique_id=616819858]
+position = Vector2(704, 32)
+script = ExtResource("9_area")
+display_name = "后院"
+size = Vector2i(3, 12)
 
 [node name="Ents" type="Node2D" parent="." unique_id=957579078]
 
@@ -211,7 +258,7 @@ script = ExtResource("5_gucdn")
 kind = "source"
 era = "present"
 label = "烟"
-text = "花园长椅底下，园丁藏了一罐烟丝。我收下了。"
+text = "花园角落的花盆底下，园丁藏了一罐烟丝。我收下了。"
 amount = 1
 
 [node name="bench" type="Node2D" parent="Ents" unique_id=799692512]
@@ -234,7 +281,7 @@ amount = 1
 position = Vector2(736, 224)
 script = ExtResource("5_gucdn")
 label = "杂"
-text = "储物间里堆满了杂物。"
+text = "后院里堆满了杂物。"
 
 [node name="plant" type="Node2D" parent="Ents" unique_id=986795700]
 position = Vector2(768, 32)

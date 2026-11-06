@@ -16,6 +16,8 @@ const C_ACCENT := Color("#e0b46a")
 const C_RED := Color("#c9533b")
 const C_INK := Color("#2a2018")
 const C_PAPER := Color("#e9dfc8")
+const C_SIGN := Color("#efe3c4")  # 地点名牌的卡纸
+const C_PLACE := Color("#9a3a1a")  # 对话里提到的地点
 
 ## 全屏暗角：模型放在一张暗处的桌子上
 const LIGHT_SHADER := """
@@ -87,6 +89,8 @@ func _ready() -> void:
 
 
 var smoke_t := 0.0  # 这口烟吐出来多久了（对话框弹出动画用）
+var cur_area := ""  # 侦探现在在哪个地点（站在门洞里时保留上一个）
+var area_t := 9.0  # 走进这个地点多久了（名牌亮一下）
 var _was_cloud := false
 
 
@@ -98,6 +102,11 @@ func _process(delta: float) -> void:
 		_was_cloud = game.s.cloud
 		smoke_t += delta
 		_update_hover()
+		var a: String = game.area_at(game.s.pos)
+		if a != "" and a != cur_area:
+			cur_area = a
+			area_t = 0.0
+		area_t += delta
 	queue_redraw()
 	ui.queue_redraw()
 	_update_light()
@@ -178,6 +187,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _start(idx: int) -> void:
 	game.load_level(idx)
+	cur_area = ""
+	area_t = 9.0
 	title_pick = idx
 	title = false
 	testing = false
@@ -211,6 +222,8 @@ func _play_from_editor(level: Dictionary) -> void:
 	editor.visible = false
 	world.set_edit_light(false)
 	game.load_data(level)
+	cur_area = ""
+	area_t = 9.0
 	world.game = game
 	world.board = BOARD
 	world.refresh()
@@ -282,6 +295,7 @@ func _draw() -> void:
 		return
 	if editing:
 		return
+	_draw_signs()
 	_draw_tags()
 	_draw_density()
 	_draw_bubbles()
@@ -400,6 +414,83 @@ func _draw_tags() -> void:
 		Art.text_center(self, FONT, s, c, size, Color("#efe6d2"))
 
 
+## 地点名牌挂在哪：[地点名, 世界坐标, 是否挂在墙上]。每关算一次
+var _signs: Array = []
+var _signs_for = null
+
+
+## 名牌挂在这块区域靠里的那面墙（上面那一排墙）上，离中间最近、又不和别的名牌挤在一起的地方；
+## 上面没有墙（比如区域顶到地图边上的室外）就放在区域最上一排的地面上。小的区域先挑位置
+func _sign_spots() -> Array:
+	if _signs_for == game.L:
+		return _signs
+	_signs_for = game.L
+	_signs = []
+	var list: Array = []
+	for a in game.L.get("areas", []):
+		if a.get("sign", true):
+			list.append(a)
+	list.sort_custom(func(x, y): return (x.rect as Rect2i).get_area() < (y.rect as Rect2i).get_area())
+	var used := {}  # 行 → 已经占了的列
+	for a in list:
+		var r: Rect2i = a.rect
+		var half := maxi(1, ceili(String(a.name).length() * 0.3))
+		var row := r.position.y - 1
+		var mid := r.position.x + r.size.x / 2.0 - 0.5
+		var best := -1
+		var best_d := INF
+		for x in range(r.position.x, r.end.x):
+			if game.tile_at(Vector2i(x, row)) != Game.Tile.WALL:
+				continue
+			var clash := false
+			for k in range(x - half, x + half + 1):
+				if used.get(row, {}).has(k):
+					clash = true
+			var dd := absf(x - mid)
+			if not clash and dd < best_d:
+				best_d = dd
+				best = x
+		if best >= 0:
+			if not used.has(row):
+				used[row] = {}
+			for k in range(best - half, best + half + 1):
+				used[row][k] = true
+			_signs.append([a.name, Vector3(best + 0.5, Board3D.WALL_H, row + 1.0), true])
+		else:
+			_signs.append([a.name, Vector3(r.position.x + r.size.x / 2.0, 0.02, r.position.y + 0.5), false])
+	return _signs
+
+
+## 地点名牌：一张钉在墙上的小卡纸，像犯罪现场模型上的标签。
+## 对话里正提到它、或侦探刚走进去时，卡纸亮一下
+func _draw_signs() -> void:
+	var said := {}
+	for m in game.area_mentions(String(game.s.msg)):
+		said[m[2]] = true
+	for sg in _sign_spots():
+		var nm: String = sg[0]
+		var c := world.screen_v(sg[1]) + (Vector2(0, 7) if sg[2] else Vector2.ZERO)
+		var size := 13
+		var w := SERIF.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 14
+		var hot := 0.0
+		if said.has(nm):
+			hot = 0.75 + 0.25 * sin(t * 5.0)
+		elif nm == cur_area and area_t < 1.2:
+			hot = 1.0 - area_t / 1.2
+		var k := 1.0 + 0.08 * hot
+		draw_set_transform(c, 0, Vector2.ONE * k)
+		var r := Rect2(Vector2(-w / 2, -10), Vector2(w, 20))
+		if hot > 0.0:
+			draw_rect(r.grow(4), Color(C_ACCENT, 0.35 * hot))
+		draw_rect(Rect2(r.position + Vector2(1.5, 2), r.size), Color(0, 0, 0, 0.35))
+		draw_rect(r, C_SIGN.lerp(Color("#ffe2a0"), hot * 0.6))
+		draw_rect(r, Color(C_INK, 0.55).lerp(Color("#a8322a"), hot), false, 1.0 + hot)
+		# 一颗黄铜图钉
+		draw_circle(Vector2(0, -10), 2.2, Color("#b08a50"))
+		Art.text_center(self, SERIF, nm, Vector2(0, 0.5), size, C_INK)
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
+
 const WOW_LINES := ["好厉害……", "这烟里……是昨晚？", "我没看花眼吧？", "天哪……", "这是什么戏法？"]
 
 
@@ -466,6 +557,13 @@ func _draw_hud() -> void:
 	_text(game.L.title, Vector2(48, 30), 20, C_ACCENT, SERIF)
 	var era_txt: String = ("烟雾里 · " + game.L.past_label) if s.cloud else ("现在 · " + game.L.present_label)
 	_text(era_txt, Vector2(48, 53), 13, Color("#e8b070") if s.cloud else Color("#8fa4c8"))
+	# 侦探所在的地点：和墙上的名牌同一个样子
+	if cur_area != "":
+		var ex := 48.0 + FONT.get_string_size(era_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12
+		var w := SERIF.get_string_size(cur_area, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 12
+		var r := Rect2(ex, 40, w, 18)
+		cv.draw_rect(r, C_SIGN)
+		_text_c(cur_area, r.get_center(), 13, C_INK, SERIF)
 	# 中：烟丝和烟灰
 	_text("烟丝", Vector2(330, 28), 14, C_DIM)
 	var n := maxi(s.tobacco, 1)
@@ -521,9 +619,27 @@ func _draw_message() -> void:
 		cv.draw_rect(r.grow(1), C_ACCENT, false, 2.0)
 	var lines: PackedStringArray = String(s.msg).split("\n")
 	for i in mini(lines.size(), 3):
-		_text(lines[i], Vector2(r.position.x + 42, r.position.y + 19 + i * 19), 15, C_INK)
+		_text_places(lines[i], Vector2(r.position.x + 42, r.position.y + 19 + i * 19), 15)
 	_text("方向键 移动/撞上去推   走到旁边点击 互动   Shift 吐烟   1/2 选择   Esc 取消/%s   Z 撤销   Backspace 重来" % ("回编辑器" if testing else "回选关"),
 		Vector2(48, 634), 12, C_DIM)
+
+
+## 一行字，里面提到的地点换个颜色、加下划线（地图上的名牌同时亮起来）
+func _text_places(line: String, pos: Vector2, size: int) -> void:
+	var x := pos.x
+	var at := 0
+	for m in game.area_mentions(line) + [[line.length(), 0, ""]]:
+		var plain := line.substr(at, m[0] - at)
+		if plain != "":
+			_text(plain, Vector2(x, pos.y), size, C_INK)
+			x += FONT.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		if m[1] > 0:
+			var word := line.substr(m[0], m[1])
+			var w := FONT.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			_text(word, Vector2(x, pos.y), size, C_PLACE)
+			cv.draw_line(Vector2(x, pos.y + 3), Vector2(x + w, pos.y + 3), Color(C_PLACE, 0.7), 1.0)
+			x += w
+		at = m[0] + m[1]
 
 
 func _draw_end() -> void:

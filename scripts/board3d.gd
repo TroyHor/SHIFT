@@ -9,15 +9,15 @@ const WALL_H := 0.62
 const PITCH := 58.0  # 镜头俯角（度）
 const FOV := 30.0
 const PERSON_SCALE := 1.35
-const OPEN_TIME := 0.62  # 烟雾手卷展开要多久（秒）
+const OPEN_TIME := 0.62  # 烟雾卷开要多久（秒）
 const CLOSE_TIME := 0.5  # 卷回去要多久
 const WIN_HW := 1.52  # 完全展开时，烟雾窗口从中心到边的距离（比 1.5 多一点，盖住墙面）
 
 const FLOOR_KINDS := {"parquet": 0, "planks": 1, "carpet": 2, "garden": 3, "snow": 4, "platform": 5}
 
-## 美术风格「烟墨手卷」：
+## 美术风格「黑色旧照」：
 ##  现在 = 墨蓝夜色的水墨画，明暗两档的卡通光照，所有东西用墨线勾边；
-##  过去 = 褐色老照片，像手卷一样被烟雾从中间向两边展开，过去的东西像立体书一样从纸面上立起来。
+##  过去 = 褐色老照片，像一张卷着的旧照片被烟雾从中间向两边摊开，过去的东西像立体书一样从纸面上立起来。
 ## 地面和墙的着色器：按格子种类画纹理、靠墙的地方晕一圈墨，再按时代调色（与 Art.grade 相同的公式）。
 ## 过去的范围由 win（中心 x、中心 z、展开的半宽、0）决定，所以能一列一列地卷开、卷回。
 const TILE_SHADER := """
@@ -134,7 +134,7 @@ void fragment() {
 		if (bit(nb, 8)) ao = min(ao, 1.0 - f.x);
 		c *= mix(0.45, 1.0, smoothstep(0.0, 0.32, ao));
 	}
-	// 烟雾手卷：格子在 3x3 里、而且卷轴已经展开到这一列
+	// 烟雾窗口：格子在 3x3 里、而且烟卷已经滚过这一列
 	vec2 dc = abs(cellc - win.xy);
 	float inwin = (dc.x < 1.1 && dc.y < 1.1 && win.z > 0.0) ? 1.0 : 0.0;
 	float dx = abs(p.x - win.x);
@@ -155,8 +155,8 @@ void fragment() {
 }
 """
 
-## 烟卷：一根半透明的圆筒，表面画着一圈圈卷进去的云纹墨线（像祥云），边缘虚化。
-## UV.x 绕圆周，UV.y 沿轴；spin 让纹路跟着滚动
+## 烟卷：一根半透明的圆筒，表面是翻滚的烟涡（不规则、时断时续），边缘虚化。
+## UV.x 绕圆周，UV.y 沿轴；spin 让烟涡跟着滚动
 const ROLL_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
@@ -172,27 +172,27 @@ float vn(vec2 p) {
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
 }
+float fbm(vec2 p) {
+	return vn(p) * 0.55 + vn(p * 2.1 + 3.7) * 0.3 + vn(p * 4.3 + 9.1) * 0.15;
+}
 void vertex() {
 	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 void fragment() {
-	vec2 uv = UV;
-	float wob = vn(vec2(uv.y * 5.0, time_s * 0.4)) * 0.35 + vn(vec2(uv.y * 13.0 + 7.0, time_s * 0.7)) * 0.12;
-	float a = uv.x * 3.0 + spin + wob + uv.y * 0.6;
-	float swirl = fract(a);
-	// 卷进去的一道道墨线
-	float line = smoothstep(0.1, 0.0, abs(swirl - 0.5)) * 0.85;
-	vec3 lo = mix(vec3(0.42, 0.44, 0.52), vec3(0.44, 0.36, 0.28), past);
-	vec3 hi = mix(vec3(0.86, 0.88, 0.92), vec3(0.97, 0.92, 0.82), past);
-	vec3 ink = mix(vec3(0.16, 0.18, 0.26), vec3(0.3, 0.2, 0.12), past);
+	// 绕圆周的坐标随 spin 滚动，再被噪声扭成一团团烟涡
+	vec2 q = vec2(UV.x * 4.0 + spin, UV.y * 6.0);
+	float warp = fbm(q * 0.8 + vec2(time_s * 0.15, 0.0));
+	float smoke = fbm(q + vec2(warp * 2.2, time_s * 0.1));
+	vec3 lo = mix(vec3(0.36, 0.38, 0.44), vec3(0.4, 0.33, 0.26), past);
+	vec3 hi = mix(vec3(0.86, 0.87, 0.9), vec3(0.95, 0.9, 0.8), past);
 	float up = clamp(wn.y * 0.5 + 0.5, 0.0, 1.0);
-	vec3 c = mix(lo, hi, up);
-	c = mix(c, ink, line * (0.4 + 0.6 * up));
+	vec3 c = mix(lo, hi, clamp(up * 0.7 + smoke * 0.5, 0.0, 1.0));
+	// 烟涡之间的暗缝，让卷的层次看得出来
+	c *= 0.75 + 0.25 * smoothstep(0.35, 0.6, smoke);
 	float rim = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
-	float ends = smoothstep(0.0, 0.12, uv.y) * smoothstep(1.0, 0.88, uv.y);
-	float puffy = 0.75 + 0.25 * vn(vec2(a * 2.0, uv.y * 8.0));
+	float ends = smoothstep(0.0, 0.14, UV.y) * smoothstep(1.0, 0.86, UV.y);
 	ALBEDO = c;
-	ALPHA = alpha * smoothstep(0.05, 0.55, rim) * ends * puffy;
+	ALPHA = alpha * smoothstep(0.05, 0.6, rim) * ends * (0.55 + 0.45 * smoothstep(0.25, 0.65, smoke));
 }
 """
 
@@ -238,7 +238,7 @@ var _mats := {}
 var _puff_tex: GradientTexture2D
 const SMOKE_PUFFS := 24  # 从烟卷上飘起来的几缕烟
 var _smoke_puffs: Array = []  # [MeshInstance3D, StandardMaterial3D, phase]
-var _rolls: Array = []  # 四根烟卷：左右两根是卷轴，上下两根细的是手卷的边。[节点, 材质]
+var _rolls: Array = []  # 四根烟卷：左右两根往外滚，上下两根细的是卷起的边。[节点, 材质]
 var _pipe_puffs: Array = []
 var _feet: Array = []  # [StandardMaterial3D, step, 亮度]
 var _ghosts: Array = []  # StandardMaterial3D
@@ -258,7 +258,7 @@ var _tile_mat: ShaderMaterial
 var _outline_sh: Shader
 var _outlines := {}
 
-## 烟雾手卷的动画状态：窗口中心、目标（展开 1 / 卷回 0）、当前进度
+## 烟雾卷开卷回的动画状态：窗口中心、目标（展开 1 / 卷回 0）、当前进度
 var _win_c := Vector2i.ZERO
 var _win_on := false  # 有没有一个正在显示或正在卷回的窗口
 var _open := 0.0
@@ -819,7 +819,7 @@ func _build_tiles() -> void:
 	_fill(floor_mm, floors.size(), fbuf)
 	_fill(wall_mm, walls.size(), wbuf)
 	_fill(cap_mm, walls.size(), cbuf)
-	# 地图像一幅装裱好的画：深色木底座，外面一圈靛蓝绫子，夹一道金线
+	# 地图像镶在相框里的老照片：深色木底座，一道金线，外面一圈深酒红的衬底
 	var key := "%dx%d %s" % [game.W, game.H, board]
 	if plinth.get_meta("key", "") != key:
 		plinth.set_meta("key", key)
@@ -828,7 +828,7 @@ func _build_tiles() -> void:
 		plinth.mesh = _box(Vector3(game.W + 0.2, 0.34, game.H + 0.2))
 		plinth.material_override = _raw(Color("#1a120c"), 0.9)
 		plinth.position = Vector3(game.W / 2.0, -0.27, game.H / 2.0)
-		var mount := _part(plinth, _box(Vector3(game.W + 1.1, 0.04, game.H + 1.1)), _raw(Color("#121828"), 0.9), Vector3(0, 0.06, 0))
+		var mount := _part(plinth, _box(Vector3(game.W + 1.1, 0.04, game.H + 1.1)), _raw(Color("#2a1012"), 0.9), Vector3(0, 0.06, 0))
 		mount.material_overlay = null
 		var trim := _part(plinth, _box(Vector3(game.W + 0.5, 0.045, game.H + 0.5)), _glow(Color(0.86, 0.68, 0.4), 0.5), Vector3(0, 0.065, 0))
 		trim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1365,7 +1365,7 @@ func _process(delta: float) -> void:
 		return
 	t += delta
 	var s: Dictionary = game.s
-	# 烟雾手卷的开合
+	# 烟雾的卷开卷回
 	if _win_on:
 		if _open_to > _open:
 			_open = minf(1.0, _open + delta / OPEN_TIME)
@@ -1443,8 +1443,8 @@ func window_center() -> Vector3:
 	return at(_win_c)
 
 
-## 烟雾手卷：两根烟卷像卷轴的轴，从中间滚向左右两边，把过去展开；
-## 上下两根细烟卷是手卷的边。浓度越低，烟卷越细越淡。卷回去时两根烟卷滚回中间，合成一团散掉。
+## 烟雾窗口：两根烟卷从中间滚向左右两边，像摊开一张卷着的旧照片，把过去展开；
+## 上下两根细烟卷是照片卷起的边。浓度越低，烟卷越细越淡。卷回去时两根烟卷滚回中间，合成一团散掉。
 func _animate_smoke(s: Dictionary) -> void:
 	var hw := _hw
 	if hw <= 0.0 and not (_win_on and _open_to > 0.0):

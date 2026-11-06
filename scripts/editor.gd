@@ -35,13 +35,14 @@ const LABELS := {
 	"present_label": "现在是什么时刻", "tobacco": "开局烟丝", "style": "画风",
 	"presence_clues": "在场证据（id）", "weapon_clues": "凶器证据（id）", "motive_clues": "动机证据（id）",
 	"clue_names": "证据名字（每行 id=名字）", "suspects": "嫌疑人", "culprit": "凶手是第几个（从 0 数）",
-	"win_text": "指认对了", "lose_text": "指认错了", "by": "谁去建造（人物 id）",
+	"win_text": "指认对了", "lose_text": "指认错了", "by": "谁去建造（人物 id）", "past_look": "过去这一格是什么",
 }
 const ENUM_NAMES := {
 	"npc": "人物", "inspector": "警长", "source": "烟丝源", "prints": "指纹", "cache": "暗格", "clue": "证物",
 	"container": "容器", "crate": "家具", "candle": "蜡烛", "ice": "冰块", "compare": "对照物",
 	"ashtray": "烟灰缸", "static": "摆设", "past": "只在过去", "present": "只在现在", "both": "过去现在都有",
 	"brick": "砖墙", "planks": "木板", "lock": "门锁",
+	"auto": "自动（门锁、木板是门，砖墙是门洞）", "door": "一扇没锁的门", "doorway": "空门洞", "nothing": "什么都没有",
 }
 ## 剧情页里列出的文字
 const STORY_FIELDS := ["say", "text", "past_text", "now_text", "hint", "ask", "empty", "gift_ask", "gift_done",

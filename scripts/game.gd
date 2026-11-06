@@ -563,7 +563,7 @@ func _after_action() -> void:
 		else:
 			s.turns -= 1
 			if s.turns <= 0:
-				_close_cloud("烟雾散了。")
+				_close_cloud("烟圈卷了回去，烟雾里的夜合上了。")
 	if s.mode == "choice" and not s.cloud and s.choice.type != "accuse":
 		s.mode = "play"
 		s.choice = {}

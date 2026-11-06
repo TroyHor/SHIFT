@@ -21,3 +21,22 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
 textures/vram_compression/import_etc2_astc=true
+
+[shader_globals]
+
+smoke_a={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+smoke_b={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+smoke_all={
+"type": "float",
+"value": 0.0
+}
+era_night={
+"type": "vec2",
+"value": Vector2(0, 1)
+}

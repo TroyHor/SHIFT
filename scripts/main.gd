@@ -17,41 +17,15 @@ const C_RED := Color("#c9533b")
 const C_INK := Color("#2a2018")
 const C_PAPER := Color("#e9dfc8")
 
-## 全屏：暗角和胶片颗粒
+## 全屏暗角：模型放在一张暗处的桌子上
 const LIGHT_SHADER := """
 shader_type canvas_item;
-uniform vec2 view = vec2(960.0, 640.0);
-uniform float time_s = 0.0;
 uniform float title = 0.0;
 
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-
 void fragment() {
-	vec2 p = UV * view;
 	vec2 q = UV - 0.5;
-	float vig = smoothstep(0.38, 0.9, length(q * vec2(1.0, 1.3)));
-	float a = vig * (0.85 - title * 0.15);
-	float gr = hash(floor(p / 2.0) + floor(time_s * 24.0)) - 0.5;
-	a = clamp(a + gr * 0.05, 0.0, 1.0);
-	COLOR = vec4(0.01, 0.02, 0.05, a);
-}
-"""
-
-## 烟雾窗口：老胶片的颗粒和划痕，只盖在 3x3 上
-const SMOKE_SHADER := """
-shader_type canvas_item;
-uniform float density = 0.0;
-uniform float time_s = 0.0;
-
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-
-void fragment() {
-	vec2 p = FRAGCOORD.xy;
-	float g = hash(floor(p / 2.0) + floor(time_s * 18.0)) - 0.5;
-	float scratch = step(0.993, hash(vec2(floor(p.x / 2.0), floor(time_s * 9.0))));
-	float wv = smoothstep(0.3, 0.75, length(UV - 0.5));
-	vec3 col = mix(vec3(0.22, 0.12, 0.04), vec3(0.95, 0.88, 0.7), scratch);
-	COLOR = vec4(col, 0.02 + abs(g) * 0.1 * (0.4 + density) + wv * 0.25 + scratch * 0.3);
+	float vig = smoothstep(0.42, 0.95, length(q * vec2(1.0, 1.3)));
+	COLOR = vec4(0.03, 0.02, 0.015, vig * (0.8 - title * 0.15));
 }
 """
 
@@ -64,8 +38,6 @@ var title_pick := 0
 var ui: Node2D
 var light: ColorRect
 var light_mat: ShaderMaterial
-var smoke_fx: Node2D
-var smoke_mat: ShaderMaterial
 var world: Board3D
 var editor: LevelEditor
 var editing := false  # 在游戏内编辑器里
@@ -82,13 +54,6 @@ func _ready() -> void:
 	var l1 := CanvasLayer.new()
 	l1.layer = 1
 	add_child(l1)
-	smoke_fx = Node2D.new()
-	smoke_mat = ShaderMaterial.new()
-	smoke_mat.shader = Shader.new()
-	smoke_mat.shader.code = SMOKE_SHADER
-	smoke_fx.material = smoke_mat
-	smoke_fx.draw.connect(_draw_smoke_fx)
-	l1.add_child(smoke_fx)
 	light = ColorRect.new()
 	light.size = Vector2(960, 640)
 	light.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -135,7 +100,6 @@ func _process(delta: float) -> void:
 		_update_hover()
 	queue_redraw()
 	ui.queue_redraw()
-	smoke_fx.queue_redraw()
 	_update_light()
 
 
@@ -334,11 +298,7 @@ func _draw_ui() -> void:
 
 
 func _update_light() -> void:
-	light_mat.set_shader_parameter("time_s", t)
 	light_mat.set_shader_parameter("title", 1.0 if title else 0.0)
-	smoke_mat.set_shader_parameter("time_s", t)
-	if not title and game.s.cloud:
-		smoke_mat.set_shader_parameter("density", float(game.s.turns) / Game.SMOKE_TURNS)
 
 
 # ---------------------------------------------------------------- 标题
@@ -421,22 +381,6 @@ func _folder(i: int, r: Rect2, full: bool) -> void:
 
 # ---------------------------------------------------------------- 世界上的标注
 
-## 烟雾窗口的四个角在屏幕上的位置
-func _window_corners() -> PackedVector2Array:
-	var c := Board3D.at(game.s.center)
-	var pts := PackedVector2Array()
-	for o in [Vector3(-1.5, 0, -1.5), Vector3(1.5, 0, -1.5), Vector3(1.5, 0, 1.5), Vector3(-1.5, 0, 1.5)]:
-		pts.append(world.screen_v(c + o))
-	return pts
-
-
-func _draw_smoke_fx() -> void:
-	if title or editing or not game.s.cloud:
-		return
-	var uvs := PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)])
-	smoke_fx.draw_polygon(_window_corners(), PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]), uvs)
-
-
 ## 侦探身边两格以内的人，头顶显示名牌
 func _draw_tags() -> void:
 	var me: Vector2i = game.s.pos
@@ -496,14 +440,19 @@ func _draw_density() -> void:
 	var s: Dictionary = game.s
 	if not s.cloud:
 		return
+	# 烟圈完全张开以后才出现，跟着烟圈的上沿
+	var k := world.window_open()
+	if k < 0.6:
+		return
+	var a := (k - 0.6) / 0.4
 	var c := Board3D.at(s.center)
 	for i in Game.SMOKE_TURNS:
 		var x := -1.4 + 2.8 * (i + 0.5) / Game.SMOKE_TURNS
 		var dp := world.screen_v(c + Vector3(x, 0.95, -1.5))
 		if i < s.turns:
-			draw_circle(dp, 3.0, Color(0.97, 0.93, 0.85, 0.95))
+			draw_circle(dp, 3.0, Color(0.97, 0.93, 0.85, 0.95 * a))
 		else:
-			draw_arc(dp, 3.0, 0, TAU, 10, Color(1, 1, 1, 0.3), 1.0)
+			draw_arc(dp, 3.0, 0, TAU, 10, Color(1, 1, 1, 0.3 * a), 1.0)
 
 
 # ---------------------------------------------------------------- 界面

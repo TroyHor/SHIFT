@@ -2,13 +2,14 @@ extends SceneTree
 ## 截图工具（云端调画面用）：
 ## godot --path . --rendering-driver opengl3 --fixed-fps 60 --script res://tools/shot.gd -- <关卡序号> <动作> <等几帧> <输出.png>
 ## 动作：w/a/s/d 移动，p 吐烟，z 撤销；"-" 表示不做动作。动作之间隔 40 帧，最后一个动作后再等 <等几帧>。
-## 关卡序号写 title 就截标题画面。
+## 关卡序号写 title 就截标题画面。可选第 5 个参数强行指定光：dn = 现在白天、过去夜里（nd、dd、nn 同理）
 
 var main: Node
 var frame := 0
 var plan: Array = []
 var out := "shot.png"
 var wait := 30
+var light := ""
 
 
 func _initialize() -> void:
@@ -17,6 +18,7 @@ func _initialize() -> void:
 	var acts: String = args[1] if args.size() > 1 else "-"
 	wait = int(args[2]) if args.size() > 2 else 30
 	out = args[3] if args.size() > 3 else "shot.png"
+	light = args[4] if args.size() > 4 else ""
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	var f := 5
@@ -35,6 +37,10 @@ func _process(_delta: float) -> bool:
 		var step: Array = plan.pop_front()
 		match step[1]:
 			"start":
+				if light.length() == 2:
+					main.world.force_night = Vector2(1.0 if light[0] == "n" else 0.0, 1.0 if light[1] == "n" else 0.0)
+					if main.world.force_night.x == main.world.force_night.y:
+						main.world.force_night.y = 0.5
 				main._start(step[2])
 			"w":
 				main.game.move(Vector2i.UP)

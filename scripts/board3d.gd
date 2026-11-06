@@ -25,9 +25,11 @@ const SHADE_COMMON := """
 global uniform vec4 smoke_a;
 global uniform vec4 smoke_b;
 global uniform float smoke_all;
+// 两个时代各自是白天(0)还是黑夜(1)，由关卡的时间点决定（见 Board3D._era_light）
+global uniform vec2 era_night;
 varying vec3 wpos;
 varying vec3 wnrm;
-varying float past;
+varying float nite;
 varying float v_spec;
 varying float v_shin;
 
@@ -39,7 +41,7 @@ float vn(vec2 p) {
 	return mix(mix(hsh(i), hsh(i + vec2(1.0, 0.0)), f.x), mix(hsh(i + vec2(0.0, 1.0)), hsh(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-// x = 在烟里的程度，y = 靠近烟圈内侧的薄雾
+// x = 在烟里的程度，y = 烟圈里外一圈的影子（烟管挡住了光）
 vec2 era(vec2 p) {
 	if (smoke_all > 0.5) return vec2(1.0, 0.0);
 	vec2 r = vec2(0.0);
@@ -50,21 +52,23 @@ vec2 era(vec2 p) {
 			float c = max(d.x, d.y);
 			float m = 1.0 - smoothstep(w.z - 0.02, w.z + 0.02, c);
 			r.x = max(r.x, m);
-			r.y = max(r.y, m * (1.0 - smoothstep(0.0, 0.6, w.z - c)));
+			r.y = max(r.y, 1.0 - smoothstep(0.0, 0.45, abs(c - w.z)));
 		}
 	}
 	return r;
 }
 
-// 现在：阴天日光，颜色淡一点；过去：月光很弱，灯光照亮的地方颜色更浓
-vec3 finish(vec3 c, out float ao, out vec3 emit, out float pst) {
+// 现在的颜色淡一点（案发后），烟里保留原色。光按这一点的时代是白天还是黑夜来定
+vec3 finish(vec3 c, out vec3 emit, out float nt, out float pst) {
 	vec2 e = era(wpos.xz);
 	pst = e.x;
+	nt = mix(era_night.x, era_night.y, pst);
 	float l = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(l), c, mix(0.8, 1.0, pst));
-	ao = mix(1.0, 0.14, pst);
-	// 环境光自己算（兼容渲染器不认 AO）：白天是灰蓝的天光，夜里只剩一点点
-	emit = vec3(0.9, 0.86, 0.78) * e.y * 0.08 + c * mix(vec3(0.3, 0.33, 0.38), vec3(0.045, 0.065, 0.14), pst);
+	// 烟管压在地上的一圈影子：让窗口的边一眼看得出
+	c *= 1.0 - 0.45 * e.y;
+	// 环境光自己算（兼容渲染器不认 AO）：白天是明亮的天光，夜里几乎没有
+	emit = c * mix(vec3(0.36, 0.38, 0.42), vec3(0.02, 0.03, 0.07), nt);
 	return c;
 }
 
@@ -72,10 +76,12 @@ void light() {
 	float ndl = clamp((dot(NORMAL, LIGHT) + 0.35) / 1.35, 0.0, 1.0);
 	vec3 k;
 	if (LIGHT_IS_DIRECTIONAL) {
-		k = mix(vec3(1.0), vec3(0.08, 0.12, 0.26), past);
+		k = mix(vec3(1.0), vec3(0.045, 0.065, 0.15), nite);
 	} else {
-		k = vec3(mix(0.08, 1.0, past));
+		k = vec3(mix(0.06, 1.0, nite));
 	}
+	// 介于白天和黑夜之间（两个时代时间相近时）是黄昏：主光偏暖
+	if (LIGHT_IS_DIRECTIONAL) k *= mix(vec3(1.0), vec3(1.3, 0.85, 0.55), 4.0 * nite * (1.0 - nite));
 	vec3 lc = LIGHT_COLOR * ATTENUATION * k;
 	DIFFUSE_LIGHT += ndl * lc / PI;
 	vec3 hv = normalize(LIGHT + VIEW);
@@ -100,14 +106,12 @@ void vertex() {
 void fragment() {
 	v_spec = spec_amt;
 	v_shin = shin_amt;
-	float ao;
 	vec3 em;
+	float nt;
 	float pst;
-	ALBEDO = finish(albedo.rgb, ao, em, pst);
-	past = pst;
-	AO = ao;
-	AO_LIGHT_AFFECT = 0.0;
-	EMISSION = em + lamp.rgb * lamp_e * past;
+	ALBEDO = finish(albedo.rgb, em, nt, pst);
+	nite = nt;
+	EMISSION = em + lamp.rgb * lamp_e * nt;
 	ROUGHNESS = 0.8;
 	%s
 }
@@ -261,13 +265,11 @@ void fragment() {
 	}
 	v_spec = spec;
 	v_shin = shin;
-	float ao;
 	vec3 em;
+	float nt;
 	float pst;
-	ALBEDO = finish(c, ao, em, pst);
-	past = pst;
-	AO = ao;
-	AO_LIGHT_AFFECT = 0.0;
+	ALBEDO = finish(c, em, nt, pst);
+	nite = nt;
 	EMISSION = em;
 	ROUGHNESS = 0.8;
 }
@@ -374,6 +376,9 @@ var _rings: Array = []  # [MeshInstance3D, ShaderMaterial]
 var _swap: Array = []
 var _last_level = null
 var _edit_light := false
+## 两个时代各自是白天(0)还是黑夜(1)；截图工具可以强行指定来看效果
+var era_night := Vector2(0, 1)
+var force_night := Vector2(-1, -1)
 
 
 func setup(g, board_rect: Rect2) -> void:
@@ -948,7 +953,7 @@ func _animate_windows(delta: float) -> void:
 		rm.set_shader_parameter("thick", _thick(w, hw, density))
 		rm.set_shader_parameter("roll", w.roll)
 		rm.set_shader_parameter("t", t)
-		rm.set_shader_parameter("warm", clampf(hw / WIN, 0.0, 1.0))
+		rm.set_shader_parameter("warm", clampf(hw / WIN, 0.0, 1.0) * era_night.y)
 		rm.set_shader_parameter("fade", clampf(hw * 3.0, 0.0, 1.0))
 	RenderingServer.global_shader_parameter_set("smoke_a", g[0])
 	RenderingServer.global_shader_parameter_set("smoke_b", g[1])
@@ -961,7 +966,7 @@ func _animate_windows(delta: float) -> void:
 	smoke_lamp.visible = lw != null
 	if lw != null:
 		smoke_lamp.position = at(lw.c, 1.2)
-		smoke_lamp.light_energy = (0.22 + density * 0.2) * _half(lw) / WIN
+		smoke_lamp.light_energy = (0.22 + density * 0.2) * _half(lw) / WIN * era_night.y
 	for sw in _swap:
 		var nd: Node3D = sw[0]
 		nd.visible = _past_shown(sw[1]) == sw[2]
@@ -977,6 +982,8 @@ func _thick(_w: Dictionary, hw: float, density: float) -> float:
 
 func refresh() -> void:
 	fit()
+	era_night = force_night if force_night.x >= 0.0 else era_light(game.L)
+	RenderingServer.global_shader_parameter_set("era_night", era_night)
 	_sync_windows()
 	_build_tiles()
 	for c in dyn.get_children():
@@ -1026,6 +1033,31 @@ func refresh() -> void:
 			player.position = to
 	ember.visible = s.tobacco > 0
 	_animate_windows(0.0)
+
+
+## 时间点是夜里吗：19:00 以后、6:00 以前算夜里。没写时间就用 fallback
+static func _is_night(label: String, fallback: bool) -> bool:
+	var re := RegEx.create_from_string("(\\d{1,2})[:：](\\d{2})")
+	var m := re.search(label)
+	if m == null:
+		return fallback
+	var h := int(m.get_string(1))
+	return h >= 19 or h < 6
+
+
+## 两个时代的光：按关卡的两个时间点决定谁是白天、谁是黑夜。
+## 两个时间都是白天或都是夜里时，烟里换成黄昏的光（0.5），窗口照样一眼看得出来
+static func era_light(L: Dictionary) -> Vector2:
+	var now := 1.0 if _is_night(String(L.get("present_label", "")), false) else 0.0
+	var past := 1.0 if _is_night(String(L.get("past_label", "")), true) else 0.0
+	if now == past:
+		past = 0.5
+	return Vector2(now, past)
+
+
+## 正在搭的这个物件那个时代是不是夜里（夜里台灯才亮）
+func _lit() -> bool:
+	return (era_night.y if _past else era_night.x) > 0.75
 
 
 func _place(e: Dictionary) -> Node3D:
@@ -1341,7 +1373,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 			_part(n, _cyl(0.008, 0.008, 0.18), _m(Color("#2a2a2a")), Vector3(0.22, 0.52, -0.12))
 			_part(n, _cyl(0.04, 0.09, 0.07), _m(Color("#2f6a42"), 0.25), Vector3(0.22, 0.62, -0.1))
 			_part(n, _sph(0.03), _lamp_m(Color("#d8d0b8"), Color(1.0, 0.82, 0.5), 5.0), Vector3(0.22, 0.585, -0.1))
-			if _past:
+			if _lit():
 				_lamp_light(n, Vector3(0.22, 0.55, -0.1), 1.6, 2.6)
 		"table":
 			_part(n, _cyl(0.38, 0.38, 0.04, 28), _m(Color("#5a3820"), 0.5), Vector3(0, 0.38, 0))

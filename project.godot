@@ -36,3 +36,7 @@ smoke_all={
 "type": "float",
 "value": 0.0
 }
+era_night={
+"type": "vec2",
+"value": Vector2(0, 1)
+}

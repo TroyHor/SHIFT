@@ -1,7 +1,7 @@
 extends SceneTree
 ## 截图工具（云端调画面用）：
 ## godot --path . --rendering-driver opengl3 --fixed-fps 60 --script res://tools/shot.gd -- <关卡序号> <动作> <等几帧> <输出.png>
-## 动作：w/a/s/d 移动，p 吐烟，z 撤销；"-" 表示不做动作。动作之间隔 40 帧，最后一个动作后再等 <等几帧>。
+## 动作：w/a/s/d 移动，p 吐烟，z 撤销，t 多给一撮烟丝；"-" 表示不做动作。动作之间隔 40 帧，最后一个动作后再等 <等几帧>。
 ## 关卡序号写 title 就截标题画面。可选第 5 个参数强行指定光：dn = 现在白天、过去夜里（nd、dd、nn 同理）
 
 var main: Node
@@ -54,6 +54,8 @@ func _process(_delta: float) -> bool:
 				main.game.puff()
 			"z":
 				main.game.undo()
+			"t":
+				main.game.s.tobacco += 1
 			"save":
 				root.get_texture().get_image().save_png(out)
 				return true

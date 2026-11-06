@@ -16,6 +16,9 @@ const FOV := 30.0
 const PERSON_SCALE := 1.35
 const WIN := 1.5  # 烟雾窗口的半宽（3x3）
 const OPEN_TIME := 0.75
+const DOOR_OPEN := 1.55  # 门开到多大（弧度）
+const DOOR_OPEN_TIME := 0.15
+const DOOR_CLOSE_TIME := 0.45
 const CLOSE_TIME := 0.6
 
 const FLOOR_KINDS := {"parquet": 0, "planks": 1, "carpet": 2, "garden": 3, "snow": 4, "platform": 5}
@@ -375,6 +378,12 @@ var _rings: Array = []  # [MeshInstance3D, ShaderMaterial]
 ## 窗口范围里两个时代的东西都搭好，烟管滚过去时换：[节点, 格子, 是不是过去]
 var _swap: Array = []
 var _last_level = null
+## 门：[门扇的转轴, 格子, 是不是过去, 记录的键]。开门的进度存在 _door_state 里，重搭场景时不丢
+var _doors: Array = []
+var _door_state := {}  # 键 → [0..1 开到哪, 往哪边开]
+var _door_level = null
+var _last_cell := Vector2i(-99, -99)
+var _came_from := Vector2i(-99, -99)
 var _edit_light := false
 ## 两个时代各自是白天(0)还是黑夜(1)；截图工具可以强行指定来看效果
 var era_night := Vector2(0, 1)
@@ -999,13 +1008,31 @@ func refresh() -> void:
 	_looks = game.onlookers()
 	_spread_people()
 	var all_past: bool = game.reveal_all
-	# 后来的建造只在现在
-	if not all_past:
-		for lt in game.d.later_active:
+	_doors.clear()
+	if not is_same(game.L, _door_level):
+		_door_level = game.L
+		_door_state.clear()
+	var cell: Vector2i = game.s.pos
+	if cell != _last_cell:
+		_came_from = _last_cell
+		_last_cell = cell
+	# 后来的建造：现在挡路；过去那一格是一扇没锁的门、一个空门洞，或者什么都没有
+	for lt in game.L.later:
+		var look: String = lt.get("past", "door")
+		if not all_past:
 			_past = false
-			var n := _later(lt)
-			if _in_zone(lt.pos):
+			var n: Node3D = null
+			if lt in game.d.later_active:
+				n = _later(lt)
+			elif look != "nothing":
+				n = _door(lt, look == "door", false)
+			if n != null and _in_zone(lt.pos):
 				_swap.append([n, lt.pos, false])
+		if look != "nothing" and (all_past or _in_zone(lt.pos)):
+			_past = true
+			var pn := _door(lt, look == "door", false)
+			if not all_past:
+				_swap.append([pn, lt.pos, true])
 	if not all_past:
 		for e in game.present_ents():
 			_past = false
@@ -1206,6 +1233,9 @@ func _later(lt: Dictionary) -> Node3D:
 	# 墙在左右两边：缺口是东西向的，木板、门沿 x 方向；否则沿 z 方向
 	var along_x: bool = _wall(lt.pos + Vector2i.LEFT) or _wall(lt.pos + Vector2i.RIGHT)
 	var ry := 0.0 if along_x else PI / 2.0
+	if lt.kind == "planks" and lt.get("past", "door") == "door":
+		# 木板钉在原来那扇门上
+		_door_parts(n, ry, lt, true, true)
 	match lt.kind:
 		"brick":
 			# 新砌的砖：比原来的墙颜色新、砖缝白
@@ -1230,19 +1260,100 @@ func _later(lt: Dictionary) -> Node3D:
 			for i in 3:
 				var y := 0.16 + i * 0.22
 				var tilt := 0.18 if i % 2 == 0 else -0.14
-				_part(n, _box(Vector3(1.06, 0.13, 0.06)), _m(Color("#a07a4a").lerp(Color("#8a6236"), Art.h(i, 2))), Vector3(0, y, 0), Vector3(0, ry, tilt))
+				_part(n, _box(Vector3(1.06, 0.13, 0.06)), _m(Color("#a07a4a").lerp(Color("#8a6236"), Art.h(i, 2))), Vector3(0, y, 0.08).rotated(Vector3.UP, ry), Vector3(0, ry, tilt))
 				for sx in [-0.42, 0.42]:
-					_part(n, _sph(0.018), _m(Color("#c8ccd4"), 0.2, 0.9), (Vector3(sx, y + sx * tilt * 0.9, 0.04)).rotated(Vector3.UP, ry))
+					_part(n, _sph(0.018), _m(Color("#c8ccd4"), 0.2, 0.9), (Vector3(sx, y + sx * tilt * 0.9, 0.12)).rotated(Vector3.UP, ry))
 			for sx in [-0.44, 0.44]:
 				_part(n, _box(Vector3(0.08, WALL_H, 0.08)), _m(Color("#5a4026")), Vector3(sx, WALL_H / 2.0, 0).rotated(Vector3.UP, ry))
 		"lock":
-			_part(n, _box(Vector3(0.96, WALL_H * 0.96, 0.14)), _m(Color("#5a3622"), 0.5), Vector3(0, WALL_H * 0.48, 0), Vector3(0, ry, 0))
-			for k in 2:
-				_part(n, _box(Vector3(0.36, WALL_H * 0.7, 0.02)), _m(Color("#4a2c1a"), 0.5), Vector3(-0.21 + k * 0.42, WALL_H * 0.48, 0.075).rotated(Vector3.UP, ry), Vector3(0, ry, 0))
-			_part(n, _sph(0.035), _m(Art.GOLD, 0.25, 0.8), Vector3(0.3, 0.36, 0.1).rotated(Vector3.UP, ry))
-			_part(n, _box(Vector3(0.14, 0.16, 0.06)), _m(Color("#9aa0a8"), 0.3, 0.8), Vector3(0, 0.3, 0.11).rotated(Vector3.UP, ry), Vector3(0, ry, 0))
-			_part(n, _torus(0.035, 0.058), _m(Color("#9aa0a8"), 0.3, 0.8), Vector3(0, 0.4, 0.11).rotated(Vector3.UP, ry), Vector3(PI / 2, ry, 0))
+			_door_parts(n, ry, lt, true, true)
 	return n
+
+
+## 门洞和门：[leaf] 要不要门扇，[locked] 锁着（或钉死）的门不会开，门锁的门上挂一把锁
+func _door(lt: Dictionary, leaf: bool, locked: bool) -> Node3D:
+	var n := Node3D.new()
+	n.position = at(lt.pos)
+	dyn.add_child(n)
+	var along_x: bool = _wall(lt.pos + Vector2i.LEFT) or _wall(lt.pos + Vector2i.RIGHT)
+	_door_parts(n, 0.0 if along_x else PI / 2.0, lt, leaf, locked)
+	return n
+
+
+func _door_parts(n: Node3D, ry: float, lt: Dictionary, leaf: bool, locked: bool) -> void:
+	var fr := Node3D.new()
+	fr.rotation.y = ry
+	n.add_child(fr)
+	var wood := _m(Color("#4a2e1c"), 0.6)
+	var hgt := WALL_H - 0.06
+	# 门框：两根门柱、一根门楣
+	for sx in [-0.46, 0.46]:
+		_part(fr, _box(Vector3(0.08, WALL_H, 0.26)), wood, Vector3(sx, WALL_H / 2.0, 0))
+	_part(fr, _box(Vector3(1.0, 0.07, 0.26)), wood, Vector3(0, WALL_H - 0.035, 0))
+	_part(fr, _box(Vector3(0.84, 0.012, 0.24), false), _m(Color("#3a2416"), 0.7), Vector3(0, 0.006, 0))
+	if not leaf:
+		return
+	# 门扇挂在左边的门柱上，开门就是转这个轴
+	var hinge := Node3D.new()
+	hinge.position = Vector3(-0.42, 0, 0)
+	fr.add_child(hinge)
+	var w := 0.84
+	var face := Color("#6e4428")
+	_part(hinge, _box(Vector3(w, hgt - 0.01, 0.06)), _m(face, 0.55), Vector3(w / 2.0, hgt / 2.0 + 0.005, 0))
+	# 四块门板，两面都有
+	for i in 2:
+		for j in 2:
+			for side in [-1.0, 1.0]:
+				_part(hinge, _box(Vector3(0.3, hgt * 0.34, 0.014)), _m(face.darkened(0.2), 0.55), Vector3(w / 2.0 - 0.19 + i * 0.38, hgt * (0.26 + 0.46 * j), side * 0.036))
+	for side in [-1.0, 1.0]:
+		_part(hinge, _sph(0.03), _m(Art.GOLD, 0.25, 0.8), Vector3(w - 0.09, hgt * 0.47, side * 0.05))
+	if locked and lt.kind == "lock":
+		# 新挂的锁：铁搭扣横跨门缝，黄铜锁头要在远处也看得见
+		var iron := _m(Color("#3a3c42"), 0.4, 0.7)
+		var brass := _m(Color("#c8a050"), 0.25, 0.85)
+		var steel := _m(Color("#c4c8d0"), 0.2, 0.9)
+		for side in [-1.0, 1.0]:
+			_part(hinge, _box(Vector3(0.24, 0.06, 0.02)), iron, Vector3(w - 0.02, hgt * 0.5, side * 0.045))
+			_part(hinge, _box(Vector3(0.17, 0.19, 0.07)), brass, Vector3(w - 0.04, hgt * 0.5 - 0.1, side * 0.085))
+			_part(hinge, _torus(0.045, 0.072), steel, Vector3(w - 0.04, hgt * 0.5 + 0.01, side * 0.085), Vector3(PI / 2, 0, 0))
+	if locked:
+		return
+	var key := "%d,%d,%s" % [lt.pos.x, lt.pos.y, "p" if _past else "n"]
+	if not _door_state.has(key):
+		_door_state[key] = [0.0, -1.0]
+	_doors.append([hinge, lt.pos, _past, key, ry])
+	hinge.rotation.y = _door_state[key][1] * DOOR_OPEN * _ease_door(_door_state[key][0])
+
+
+static func _ease_door(p: float) -> float:
+	return p * p * (3.0 - 2.0 * p)
+
+
+## 门开着：侦探站在门里，或者这个时代有人、有东西在门口
+func _door_wanted(cell: Vector2i, past: bool) -> bool:
+	if game.s.pos == cell:
+		return true
+	var list: Array = game.past_ents() if past else game.present_ents()
+	for e in list:
+		if e.pos == cell:
+			return true
+	return false
+
+
+func _animate_doors(delta: float) -> void:
+	for dr in _doors:
+		var st: Array = _door_state[dr[3]]
+		var want := _door_wanted(dr[1], dr[2])
+		if want and st[0] <= 0.0:
+			# 往侦探走的方向推开
+			var mv: Vector2i = dr[1] - _came_from if game.s.pos == dr[1] and absi(dr[1].x - _came_from.x) + absi(dr[1].y - _came_from.y) == 1 else Vector2i.ZERO
+			var lz := Vector3(mv.x, 0, mv.y).rotated(Vector3.UP, -dr[4]).z
+			st[1] = 1.0 if lz < -0.1 else -1.0
+		if want:
+			st[0] = minf(1.0, st[0] + delta / DOOR_OPEN_TIME)
+		else:
+			st[0] = maxf(0.0, st[0] - delta / DOOR_CLOSE_TIME)
+		dr[0].rotation.y = st[1] * DOOR_OPEN * _ease_door(st[0])
 
 
 # ---------------------------------------------------------------- 物件
@@ -1691,4 +1802,5 @@ func _process(delta: float) -> void:
 		else:
 			nd.position = base + Vector3(0, absf(sin(t * 5.0 + base.x)) * 0.05, 0)
 	hover.rotation.y = t * 1.5
+	_animate_doors(delta)
 	_animate_windows(delta)

@@ -43,6 +43,7 @@ script = ExtResource("4_i7yir")
 kind = "planks"
 display_name = "钉死的门"
 text = "冰窖的门被木板钉死了。钉子是新的，今早才钉上的？昨晚这门洞还敞着。"
+past_look = "doorway"
 
 [node name="Ents" type="Node2D" parent="." unique_id=1314541065]
 

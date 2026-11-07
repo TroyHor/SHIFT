@@ -1691,7 +1691,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 const MODEL_DIR := "res://assets/generated"
 ## 东西已经拿走 / 查过时变暗的物件
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
-## 个别模型朝向不对时在这里转（弧度，绕竖轴）。默认模型正面朝 +Z（朝镜头）
+## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
 const MODEL_YAW := {}
 ## 模型可以比程序拼的高出多少
 const MODEL_TALL := 2.0
@@ -1733,7 +1733,15 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 		n.remove_child(c)
 		c.queue_free()
 	var m: Node3D = ps.instantiate()
-	m.rotation.y = MODEL_YAW.get(key, 0.0)
+	if MODEL_YAW.has(key):
+		m.rotation.y = MODEL_YAW[key]
+	else:
+		# 长条的东西（书桌、书架）：模型的长边和程序拼的不在同一个方向就转 90°
+		var mb0 := _model_box(m)
+		var want := box.size.x / box.size.z
+		var got := mb0.size.x / mb0.size.z
+		if (want > 1.25 and got < 0.8) or (want < 0.8 and got > 1.25):
+			m.rotation.y = PI / 2
 	var mb := _model_box(m)
 	if mb.size.x <= 0.0 or mb.size.z <= 0.0 or mb.size.y <= 0.0:
 		m.free()

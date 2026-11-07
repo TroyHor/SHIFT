@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://up76lk1f0dr0"
-path="res://.godot/imported/bookshelf_tripo_base_color_243724d6-3773-4738-b08a-2b907ba67df1.jpg-509fbcc8b2ad49332bed36b049aca822.ctex"
+uid="uid://4xp7k507ei8r"
+path="res://.godot/imported/crates_tripo_base_color_6f5df432-1141-4b15-a689-3cfa0ac10615.jpg-26fd8b8f2e1ec0ec556de5aa654900d1.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "10685f517f589a15978f59375f1f3251"
+"md5": "3a0933aed637956e61001345620f37b8"
 }
 
 [deps]
 
-source_file="res://assets/generated/bookshelf/bookshelf_tripo_base_color_243724d6-3773-4738-b08a-2b907ba67df1.jpg"
-dest_files=["res://.godot/imported/bookshelf_tripo_base_color_243724d6-3773-4738-b08a-2b907ba67df1.jpg-509fbcc8b2ad49332bed36b049aca822.ctex"]
+source_file="res://assets/generated/crates/crates_tripo_base_color_6f5df432-1141-4b15-a689-3cfa0ac10615.jpg"
+dest_files=["res://.godot/imported/crates_tripo_base_color_6f5df432-1141-4b15-a689-3cfa0ac10615.jpg-26fd8b8f2e1ec0ec556de5aa654900d1.ctex"]
 
 [params]
 

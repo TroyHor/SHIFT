@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djd4oabhi5q0c"
-path="res://.godot/imported/safe_tripo_base_color_c60f5c19-1ab2-4532-a1ff-2dec77e694db.jpg-543b5ce582a0710290d08da45afe2024.ctex"
+uid="uid://bq2wr2f6wj0tv"
+path="res://.godot/imported/safe_tripo_base_color_e8dccd99-2de6-4a41-8753-0ee801075e52.jpg-609194d2fa7988c4c00fbbcf0b7b65eb.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "357dfc9d572d6c2bff11f7240f13d0fc"
+"md5": "089df32667795a8d3ab79c4bf2ab9479"
 }
 
 [deps]
 
-source_file="res://assets/generated/safe/safe_tripo_base_color_c60f5c19-1ab2-4532-a1ff-2dec77e694db.jpg"
-dest_files=["res://.godot/imported/safe_tripo_base_color_c60f5c19-1ab2-4532-a1ff-2dec77e694db.jpg-543b5ce582a0710290d08da45afe2024.ctex"]
+source_file="res://assets/generated/safe/safe_tripo_base_color_e8dccd99-2de6-4a41-8753-0ee801075e52.jpg"
+dest_files=["res://.godot/imported/safe_tripo_base_color_e8dccd99-2de6-4a41-8753-0ee801075e52.jpg-609194d2fa7988c4c00fbbcf0b7b65eb.ctex"]
 
 [params]
 

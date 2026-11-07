@@ -1800,6 +1800,9 @@ func _retint(m: Node3D, dim: bool, ghost: Material) -> void:
 					metal = src.metallic
 				if dim:
 					col = col.darkened(0.5)
+				# 上漆的哑光模型：Tripo 的材质常常太亮太滑，压一压
+				rough = maxf(rough, 0.6)
+				metal = minf(metal, 0.4)
 				var sm: ShaderMaterial = _m(col, rough, metal).duplicate()
 				sm.set_shader_parameter("tex", tex)
 				_model_mats[k] = sm

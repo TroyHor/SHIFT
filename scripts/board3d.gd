@@ -97,6 +97,8 @@ const PROP_SHADER := """
 shader_type spatial;
 render_mode %s;
 uniform vec4 albedo : source_color = vec4(1.0);
+// Dify 工作流做的模型带一张颜色贴图；程序拼的物件没有贴图，就是白色
+uniform sampler2D tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform float spec_amt = 0.15;
 uniform float shin_amt = 16.0;
 uniform vec4 lamp : source_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -112,7 +114,8 @@ void fragment() {
 	vec3 em;
 	float nt;
 	float pst;
-	ALBEDO = finish(albedo.rgb, em, nt, pst);
+	vec4 tc = texture(tex, UV);
+	ALBEDO = finish(albedo.rgb * tc.rgb, em, nt, pst);
 	nite = nt;
 	EMISSION = em + lamp.rgb * lamp_e * nt;
 	ROUGHNESS = 0.8;
@@ -799,7 +802,7 @@ func _shader(alpha: bool) -> Shader:
 		s.code = PROP_SHADER % [
 			"blend_mix, depth_draw_opaque, cull_back" if alpha else "cull_back",
 			SHADE_COMMON,
-			"ALPHA = albedo.a;" if alpha else "",
+			"ALPHA = albedo.a * tc.a;" if alpha else "",
 		]
 		_shaders[alpha] = s
 	return _shaders[alpha]
@@ -1366,13 +1369,18 @@ func _entity(e: Dictionary) -> Node3D:
 	elif kind in ["inspector", "npc"]:
 		var body := Node3D.new()
 		n.add_child(body)
-		_person(body, Art.style_for(e), false)
+		var style := Art.style_for(e)
+		_person(body, style, false)
+		_use_model(body, "person_" + style, false)
 		body.scale = Vector3.ONE * PERSON_SCALE
 		_figures.append([body, Art.h(e.pos.x, e.pos.y) * TAU])
 	else:
 		var done: bool = (kind in ["cache", "clue"] and game.s.clues.has(e.get("clue", ""))) \
 			or (kind == "container" and e.get("taken", false))
-		_thing(n, Art.sprite_for(e), e, done)
+		var sprite := Art.sprite_for(e)
+		_thing(n, sprite, e, done)
+		if sprite != "":
+			_use_model(n, sprite, done and sprite in DIM_WHEN_DONE)
 	return n
 
 
@@ -1402,9 +1410,14 @@ func _tin(n: Node3D, ghost: bool, glow: bool) -> void:
 		_part(n, _cyl(0.16, 0.16, 0.035), ml, Vector3(0, 0.275, 0)),
 		_part(n, _cyl(0.1, 0.1, 0.01), mr, Vector3(0, 0.296, 0)),
 	]
+	_body(n)
+	_use_model(n, "tin", false, mb if ghost else null)
 	if ghost:
-		for p in parts:
-			p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for p in n.get_children():
+			if p is GeometryInstance3D:
+				p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for q in p.find_children("*", "GeometryInstance3D", true, false):
+				q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if glow:
 		var gm := _flat_mat(Color(0.95, 0.78, 0.45, 0.5))
 		var g := _part(n, _plane(0.95, 0.95), gm, Vector3(0, 0.012, 0))
@@ -1465,6 +1478,7 @@ func _person(n: Node3D, style: String, detective: bool) -> void:
 			_part(n, _cyl(0.158, 0.158, 0.03), _m(Color("#2a1a10")), Vector3(0, 0.22, 0))
 	if style == "inspector":
 		_part(n, _box(Vector3(0.04, 0.05, 0.02), false), _m(Art.GOLD, 0.25, 0.8), Vector3(0.06, 0.36, 0.13))
+	_body(n)
 	if detective:
 		# 风衣：腰带、翻领；烟斗
 		_part(n, _cyl(0.142, 0.142, 0.03), _m(Color("#6a4a2a")), Vector3(0, 0.3, 0))
@@ -1480,6 +1494,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 			for sx in [-0.37, 0.37]:
 				_part(n, _box(Vector3(0.08, 0.38, 0.52)), _m(Color("#5a3820")), Vector3(sx, 0.19, 0))
 			_part(n, _box(Vector3(0.22, 0.01, 0.28)), _m(Color("#efe6d0")), Vector3(-0.16, 0.43, 0.04), Vector3(0, 0.15, 0))
+			_body(n)  # 台灯只在夜里亮，始终用程序画的
 			_part(n, _cyl(0.05, 0.06, 0.02), _m(Color("#2a2a2a")), Vector3(0.22, 0.435, -0.12))
 			_part(n, _cyl(0.008, 0.008, 0.18), _m(Color("#2a2a2a")), Vector3(0.22, 0.52, -0.12))
 			_part(n, _cyl(0.04, 0.09, 0.07), _m(Color("#2f6a42"), 0.25), Vector3(0.22, 0.62, -0.1))
@@ -1536,6 +1551,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 		"cache":
 			_part(n, _box(Vector3(0.66, 0.02, 0.66)), _m(Color("#6a4a2e")), Vector3(0, 0.005, 0))
 			_part(n, _box(Vector3(0.56, 0.025, 0.56)), _m(Color("#0a0806")), Vector3(0, 0.008, 0))
+			_body(n)
 			if not done:
 				_part(n, _box(Vector3(0.3, 0.01, 0.04)), _m(Color("#c8ccd4"), 0.2, 0.9), Vector3(0.02, 0.03, 0), Vector3(0, 0.6, 0))
 				_part(n, _box(Vector3(0.12, 0.025, 0.05)), _m(Color("#4a2a1a")), Vector3(-0.14, 0.035, 0.1), Vector3(0, 0.6, 0))
@@ -1562,6 +1578,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 			_part(n, _box(Vector3(0.86, 0.04, 0.54)), _m(Color("#4a2a18")), Vector3(0, 0.87, 0))
 		"safe":
 			_part(n, _box(Vector3(0.6, 0.6, 0.56)), _m(Color("#4a525e"), 0.35, 0.7), Vector3(0, 0.3, 0))
+			_body(n)  # 转盘、把手、打开的门是状态，始终用程序画的
 			if done:
 				_part(n, _box(Vector3(0.46, 0.46, 0.02)), _m(Color("#14161a")), Vector3(0, 0.3, 0.281))
 				_part(n, _box(Vector3(0.46, 0.46, 0.04)), _m(Color("#4a525e"), 0.35, 0.7), Vector3(0.43, 0.3, 0.45), Vector3(0, -1.3, 0))
@@ -1572,12 +1589,14 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 		"rack":
 			_part(n, _box(Vector3(0.8, 0.1, 0.24)), _m(Color("#5a4026")), Vector3(0, 0.05, 0))
 			_part(n, _box(Vector3(0.8, 0.06, 0.06)), _m(Color("#5a4026")), Vector3(0, 0.42, -0.06))
+			_body(n)  # 冰锥的根数是线索，始终用程序画的
 			var picks := 7 if e.era == "past" else 6
 			for k in picks:
 				_part(n, _cyl(0.012, 0.012, 0.36), _m(Color("#cfe6f2"), 0.2, 0.8), Vector3(-0.33 + k * 0.11, 0.26, 0))
 		"candle":
 			_part(n, _cyl(0.16, 0.16, 0.04), _m(Color("#a07a30"), 0.3, 0.8), Vector3(0, 0.02, 0))
 			_part(n, _cyl(0.055, 0.06, 0.26), _m(Color("#efe6d0"), 0.6), Vector3(0, 0.17, 0))
+			_body(n)
 			if e.get("lit", false) and _past:
 				var f := _part(n, _sph(0.04), _glow(Color(1.0, 0.6, 0.24), 5.0), Vector3(0, 0.34, 0), Vector3.ZERO, Vector3(0.7, 1.4, 0.7))
 				_flames.append([f, _lamp_light(n, Vector3(0, 0.45, 0), 1.5, 2.4)])
@@ -1592,6 +1611,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 					Vector3(-0.2 + col * 0.2 + row * 0.1, 0.1 + row * 0.17, 0), Vector3(0, 0, PI / 2))
 		"embers":
 			_part(n, _cyl(0.32, 0.36, 0.04), _m(Color("#3a3634"), 0.95), Vector3(0, 0.02, 0))
+			_body(n)
 			for k in 6:
 				var ep := Vector3((Art.h(k, 1) - 0.5) * 0.5, 0.05, (Art.h(1, k) - 0.5) * 0.5)
 				var em := _part(n, _sph(0.025), _glow(Color(1, 0.45, 0.15), 3.0), ep)
@@ -1617,6 +1637,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 		"toolbox":
 			_part(n, _box(Vector3(0.56, 0.24, 0.3)), _m(Color("#8a2e22"), 0.5, 0.3), Vector3(0, 0.12, 0))
 			_part(n, _torus(0.08, 0.1), _m(Color("#2a2a2a")), Vector3(0, 0.25, 0), Vector3(PI / 2, 0, 0), Vector3(1, 1, 0.6))
+			_body(n)
 			if e.era == "past":
 				_part(n, _box(Vector3(0.34, 0.025, 0.05)), _m(Color("#c8ccd4"), 0.2, 0.9), Vector3(0, 0.26, 0.04), Vector3(0, 0.4, 0))
 		"puddle":
@@ -1629,6 +1650,7 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 		"ashtray":
 			_part(n, _cyl(0.18, 0.2, 0.06), _m(Color("#6a6a72"), 0.3, 0.6), Vector3(0, 0.03, 0))
 			_part(n, _cyl(0.13, 0.13, 0.01), _m(Color("#3a3a40")), Vector3(0, 0.062, 0))
+			_body(n)
 			if e.get("baited", false):
 				_part(n, _sph(0.06), _m(Color("#b0884a")), Vector3(0, 0.07, 0), Vector3.ZERO, Vector3(1, 0.4, 1))
 				var pm := _puff_mat()
@@ -1658,6 +1680,122 @@ func _thing(n: Node3D, sprite: String, e: Dictionary, done: bool) -> void:
 			lb.rotation = Vector3(-PI / 2, 0, 0)
 			lb.position = Vector3(0, 0.425, 0)
 			n.add_child(lb)
+
+
+# ---------------------------------------------------------------- Dify 工作流做的模型
+
+## 模型放在 res://assets/generated/<名字>/<名字>.tscn（dify-godot-assets 的 deliver_to_godot 交付的样子）。
+## 名字就是物件的画法名（desk、bookshelf……）、person_<人物造型>（person_detective……）或 tin。
+## 有模型就用模型换掉程序拼的"身体"，没有就保持原样。状态部件（台灯、转盘、冰锥、火苗……）始终程序画。
+## 模型按程序拼的那一份的大小摆放：底部贴地、居中、塞进同样的占地范围，所以关卡不用改。
+const MODEL_DIR := "res://assets/generated"
+## 东西已经拿走 / 查过时变暗的物件
+const DIM_WHEN_DONE := ["book", "paper", "glove"]
+## 个别模型朝向不对时在这里转（弧度，绕竖轴）。默认模型正面朝 +Z（朝镜头）
+const MODEL_YAW := {}
+## 模型可以比程序拼的高出多少
+const MODEL_TALL := 2.0
+
+var _scenes := {}  # 名字 -> PackedScene 或 null
+var _model_mats := {}  # 原材质 -> 换成两个时代光的材质
+
+
+## 标记：到这里为止的部件是"身体"，有模型时被换掉；后面加的是状态部件
+func _body(n: Node3D) -> void:
+	n.set_meta("body", n.get_child_count())
+
+
+func model_scene(key: String) -> PackedScene:
+	if not _scenes.has(key):
+		var path := "%s/%s/%s.tscn" % [MODEL_DIR, key, key]
+		_scenes[key] = load(path) if ResourceLoader.exists(path) else null
+	return _scenes[key]
+
+
+func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> void:
+	var ps := model_scene(key)
+	if ps == null:
+		return
+	var cut: int = n.get_meta("body", n.get_child_count())
+	var box := AABB()
+	var first := true
+	var old: Array = []
+	for i in cut:
+		var c := n.get_child(i)
+		old.append(c)
+		if c is MeshInstance3D and c.mesh != null:
+			var b: AABB = c.transform * (c as MeshInstance3D).mesh.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+	if first:
+		return
+	for c in old:
+		n.remove_child(c)
+		c.queue_free()
+	var m: Node3D = ps.instantiate()
+	m.rotation.y = MODEL_YAW.get(key, 0.0)
+	var mb := _model_box(m)
+	if mb.size.x <= 0.0 or mb.size.z <= 0.0 or mb.size.y <= 0.0:
+		m.free()
+		return
+	var sc := minf(box.size.x / mb.size.x, box.size.z / mb.size.z)
+	sc = minf(sc, box.size.y * MODEL_TALL / mb.size.y)
+	var holder := Node3D.new()
+	holder.add_child(m)
+	m.scale = Vector3.ONE * sc
+	var mid := mb.get_center() * sc
+	m.position = Vector3(box.get_center().x - mid.x, box.position.y - mb.position.y * sc, box.get_center().z - mid.z)
+	_retint(m, dim, ghost)
+	n.add_child(holder)
+	n.move_child(holder, 0)
+
+
+## 模型（含旋转）在它自己父节点坐标里的包围盒，缩放前
+func _model_box(m: Node3D) -> AABB:
+	var out := AABB()
+	var first := true
+	var rot := Transform3D(Basis(Vector3.UP, m.rotation.y), Vector3.ZERO)
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null:
+			continue
+		var xf := Transform3D.IDENTITY
+		var p: Node = mi
+		while p != m and p != null:
+			xf = (p as Node3D).transform * xf
+			p = p.get_parent()
+		var b: AABB = rot * xf * mi.mesh.get_aabb()
+		out = b if first else out.merge(b)
+		first = false
+	return out
+
+
+## 模型原来的材质换成游戏的着色：保留颜色贴图，光照按两个时代换（和程序拼的物件一样）
+func _retint(m: Node3D, dim: bool, ghost: Material) -> void:
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null:
+			continue
+		if ghost != null:
+			mi.material_override = ghost
+			continue
+		for i in mi.mesh.get_surface_count():
+			var src: Material = mi.get_active_material(i)
+			var k := [src, dim]
+			if not _model_mats.has(k):
+				var col := Color.WHITE
+				var tex: Texture2D = null
+				var rough := 0.8
+				var metal := 0.0
+				if src is BaseMaterial3D:
+					col = src.albedo_color
+					tex = src.albedo_texture
+					rough = src.roughness
+					metal = src.metallic
+				if dim:
+					col = col.darkened(0.5)
+				var sm: ShaderMaterial = _m(col, rough, metal).duplicate()
+				sm.set_shader_parameter("tex", tex)
+				_model_mats[k] = sm
+			mi.set_surface_override_material(i, _model_mats[k])
 
 
 ## 夜里的灯光（只在过去那一份物件上加）
@@ -1740,6 +1878,7 @@ func _build_player() -> void:
 	body.scale = Vector3.ONE * PERSON_SCALE
 	player.add_child(body)
 	_person(body, "detective", true)
+	_use_model(body, "person_detective", false)
 	for i in 5:
 		var m := _puff_mat()
 		var mi := _part(player, _quad(0.12), m, Vector3.ZERO)

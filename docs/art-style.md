@@ -129,6 +129,7 @@
 - 烟雾窗口的位置通过全局着色器参数 `smoke_a`、`smoke_b`（中心 x、z、当前半宽）和 `smoke_all`（编辑器"过去"视图）传给所有表面；`era_night`（现在、过去各自 0 = 白天、1 = 黑夜）由 `Board3D.era_light()` 按时间点算出。都定义在 `project.godot` 的 `[shader_globals]`。
 - 截图时可以强行指定光，看四种组合：`tools/shot.gd` 的第 5 个参数 `dn`、`nd`、`dd`、`nn`。
 - 新物件：在 `_thing()` 里加一个分支，用 `_m(颜色, 粗糙度, 金属度)` 和 `_part()` 搭，自动得到两个时代的光。
+- 真模型：Dify 工作流做的模型放进 `assets/generated/<画法名>/`，自动换掉程序拼的那一份，光照一样按时代换。见 `docs/models.md`。
 - 截图：`tools/shot.gd`（见文件开头的用法）。
 
 ## 9. 要做 / 不要做

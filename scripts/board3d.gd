@@ -1695,7 +1695,7 @@ const MODEL_DIR := "res://assets/generated"
 ## 东西已经拿走 / 查过时变暗的物件
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
 ## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
-const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2}
+const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2}
 ## 模型可以比程序拼的高出多少
 const MODEL_TALL := 2.0
 
@@ -1755,7 +1755,9 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	if mb.size.x <= 0.0 or mb.size.z <= 0.0 or mb.size.y <= 0.0:
 		m.free()
 		return
-	var sc := minf(box.size.x / mb.size.x, box.size.z / mb.size.z)
+	# 最长的一边和程序拼的一样长；不出这一格，也不比程序拼的高太多
+	var sc := maxf(box.size.x, box.size.z) / maxf(mb.size.x, mb.size.z)
+	sc = minf(sc, minf(0.98 / mb.size.x, 0.98 / mb.size.z))
 	sc = minf(sc, box.size.y * MODEL_TALL / mb.size.y)
 	var holder := Node3D.new()
 	holder.add_child(m)

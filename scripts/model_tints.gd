@@ -22,6 +22,7 @@ const TINTS := {
 	"person_inspector": Color(0.987, 0.949, 0.987),
 	"person_maid": Color(0.990, 0.919, 0.897),
 	"person_passenger": Color(0.975, 0.992, 1.051),
+	"person_porter": Color(0.945, 1.086, 1.104),
 	"plant": Color(0.807, 0.853, 0.856),
 	"rack": Color(0.834, 0.809, 0.742),
 	"safe": Color(1.087, 1.025, 1.010),
@@ -30,4 +31,5 @@ const TINTS := {
 	"tin": Color(0.961, 1.071, 1.002),
 	"toolbox": Color(0.781, 0.955, 0.711),
 	"wardrobe": Color(1.510, 0.949, 0.546),
+	"wax": Color(0.975, 1.028, 1.042),
 }

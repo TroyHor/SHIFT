@@ -1235,7 +1235,7 @@ func _later(lt: Dictionary) -> Node3D:
 	n.position = at(lt.pos)
 	dyn.add_child(n)
 	# 墙在左右两边：缺口是东西向的，木板、门沿 x 方向；否则沿 z 方向
-	var along_x: bool = _wall(lt.pos + Vector2i.LEFT) or _wall(lt.pos + Vector2i.RIGHT)
+	var along_x: bool = game == null or _wall(lt.pos + Vector2i.LEFT) or _wall(lt.pos + Vector2i.RIGHT)
 	var ry := 0.0 if along_x else PI / 2.0
 	if lt.kind == "planks" and lt.get("past", "door") == "door":
 		# 木板钉在原来那扇门上
@@ -1273,7 +1273,7 @@ func _later(lt: Dictionary) -> Node3D:
 		"lock":
 			_door_parts(n, ry, lt, true, true)
 	if lt.kind in ["brick", "planks"]:
-		_use_model(n, "later_" + lt.kind, false)
+		_fill_model(n, "later_" + lt.kind, ry)
 	return n
 
 
@@ -1696,7 +1696,7 @@ const MODEL_DIR := "res://assets/generated"
 ## 东西已经拿走 / 查过时变暗的物件
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
 ## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
-const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2, "toolbox": -PI / 2, "book": PI / 2, "person_detective": 0.0}
+const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2, "toolbox": -PI / 2, "book": PI / 2, "person_detective": 0.0, "later_brick": PI / 2, "later_planks": PI / 2}
 ## 人物没写在上面的一律转这么多：Dify 工作流做的人物正面朝 +X
 const PERSON_YAW := -PI / 2
 ## 平放在地上的薄东西：模型太厚时压扁，不按厚度缩小
@@ -1776,6 +1776,46 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	var mid := mb.get_center() * Vector3(sc, sy, sc)
 	m.position = Vector3(box.get_center().x - mid.x, box.position.y - mb.position.y * sy, box.get_center().z - mid.z)
 	_retint(m, key, dim, ghost)
+	n.add_child(holder)
+	n.move_child(holder, start)
+
+
+## 门洞里的东西（砖墙、木板）：模型拉伸到正好填满程序拼的那一份，[ry] 是门洞的方向
+func _fill_model(n: Node3D, key: String, ry: float) -> void:
+	var ps := model_scene(key)
+	var start: int = n.get_meta("body_from", 0)
+	if ps == null or start >= n.get_child_count():
+		return
+	var turn := Basis(Vector3.UP, -ry)
+	var box := AABB()
+	var first := true
+	var old: Array = []
+	for i in range(start, n.get_child_count()):
+		var c := n.get_child(i)
+		old.append(c)
+		if c is MeshInstance3D and c.mesh != null:
+			var b: AABB = Transform3D(turn, Vector3.ZERO) * c.transform * (c as MeshInstance3D).mesh.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+	if first:
+		return
+	for c in old:
+		n.remove_child(c)
+		c.queue_free()
+	var m: Node3D = ps.instantiate()
+	m.rotation.y = MODEL_YAW.get(key, 0.0)
+	var mb := _model_box(m)
+	# 先转（m 自己），再按门洞的长宽高拉伸（st），最后转到门洞的方向（holder）
+	var st := Node3D.new()
+	var sc := box.size / mb.size
+	st.scale = sc
+	st.position = box.get_center() - mb.get_center() * sc
+	st.position.y = box.position.y - mb.position.y * sc.y
+	st.add_child(m)
+	var holder := Node3D.new()
+	holder.rotation.y = ry
+	holder.add_child(st)
+	_retint(m, key, false, null)
 	n.add_child(holder)
 	n.move_child(holder, start)
 

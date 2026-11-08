@@ -72,6 +72,18 @@ func _build(n: Node3D, k: String, model: bool) -> void:
 			b._scenes[k] = null
 		b._tin(n, false, false)
 		b._scenes[k] = keep
+	elif k.begins_with("later_"):
+		# 门洞里的东西：_later 自己会换模型；程序拼的那一行先把模型藏起来（左右各一段墙，看填得满不满）
+		var keep: PackedScene = b.model_scene(k)
+		if not model:
+			b._scenes[k] = null
+		var l: Node3D = b._later({"kind": k.trim_prefix("later_"), "pos": Vector2i.ZERO, "past": "door"})
+		b._scenes[k] = keep
+		l.get_parent().remove_child(l)
+		l.position = Vector3.ZERO
+		n.add_child(l)
+		for sx in [-0.75, 0.75]:
+			b._part(n, b._box(Vector3(0.5, Board3D.WALL_H, 0.9)), b._m(Color("#6a5a4a")), Vector3(sx, Board3D.WALL_H / 2.0, 0))
 	elif k.begins_with("person_"):
 		var body := Node3D.new()
 		n.add_child(body)

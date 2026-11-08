@@ -55,7 +55,11 @@ func _proc_mean(k: String) -> Color:
 	elif k.begins_with("person_"):
 		b._person(n, k.trim_prefix("person_"), k == "person_detective")
 	elif k.begins_with("later_"):
-		return Color(0, 0, 0, 0)  # 门洞里的东西按材质本色，不校
+		n.free()
+		var keep_l: PackedScene = b.model_scene(k)
+		b._scenes[k] = null
+		n = b._later({"kind": k.trim_prefix("later_"), "pos": Vector2i.ZERO, "past": "door"})
+		b._scenes[k] = keep_l
 	else:
 		b._thing(n, k, {"era": "present", "pos": Vector2i.ZERO, "lit": true}, false)
 	var cut: int = n.get_meta("body", n.get_child_count())

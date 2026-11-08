@@ -1695,7 +1695,7 @@ const MODEL_DIR := "res://assets/generated"
 ## 东西已经拿走 / 查过时变暗的物件
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
 ## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
-const MODEL_YAW := {"safe": -PI / 2}
+const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2}
 ## 模型可以比程序拼的高出多少
 const MODEL_TALL := 2.0
 

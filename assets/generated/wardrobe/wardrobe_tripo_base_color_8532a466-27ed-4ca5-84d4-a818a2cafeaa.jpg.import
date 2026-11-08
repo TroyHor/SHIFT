@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyacdbxcvbujj"
-path="res://.godot/imported/wardrobe_tripo_base_color_1b5f643b-93cb-40b9-93df-7efae00d895d.jpg-da873c37f9982324c8184858970948c3.ctex"
+uid="uid://c1olof2upwwnk"
+path="res://.godot/imported/wardrobe_tripo_base_color_8532a466-27ed-4ca5-84d4-a818a2cafeaa.jpg-a58e8a104cd9bf4aee3036c5c6906090.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "f9a84dc9adda508dfa81825076a51f80"
+"md5": "1f4585481b9f32249fb337623fdba6ed"
 }
 
 [deps]
 
-source_file="res://assets/generated/wardrobe/wardrobe_tripo_base_color_1b5f643b-93cb-40b9-93df-7efae00d895d.jpg"
-dest_files=["res://.godot/imported/wardrobe_tripo_base_color_1b5f643b-93cb-40b9-93df-7efae00d895d.jpg-da873c37f9982324c8184858970948c3.ctex"]
+source_file="res://assets/generated/wardrobe/wardrobe_tripo_base_color_8532a466-27ed-4ca5-84d4-a818a2cafeaa.jpg"
+dest_files=["res://.godot/imported/wardrobe_tripo_base_color_8532a466-27ed-4ca5-84d4-a818a2cafeaa.jpg-a58e8a104cd9bf4aee3036c5c6906090.ctex"]
 
 [params]
 

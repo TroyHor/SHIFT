@@ -1696,7 +1696,9 @@ const MODEL_DIR := "res://assets/generated"
 ## 东西已经拿走 / 查过时变暗的物件
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
 ## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
-const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2, "toolbox": -PI / 2, "person_inspector": -PI / 2, "person_butler": -PI / 2, "book": PI / 2}
+const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2, "toolbox": -PI / 2, "book": PI / 2, "person_detective": 0.0}
+## 人物没写在上面的一律转这么多：Dify 工作流做的人物正面朝 +X
+const PERSON_YAW := -PI / 2
 ## 平放在地上的薄东西：模型太厚时压扁，不按厚度缩小
 const FLAT_MODELS := ["paper", "glove", "book", "wax", "cache", "embers"]
 ## 模型可以比程序拼的高出多少
@@ -1748,6 +1750,8 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	var m: Node3D = ps.instantiate()
 	if MODEL_YAW.has(key):
 		m.rotation.y = MODEL_YAW[key]
+	elif key.begins_with("person_"):
+		m.rotation.y = PERSON_YAW
 	else:
 		# 长条的东西（书桌、书架）：模型的长边和程序拼的不在同一个方向就转 90°
 		var mb0 := _model_box(m)

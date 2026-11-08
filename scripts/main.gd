@@ -567,13 +567,22 @@ func _draw_hud() -> void:
 	# 中：烟丝和烟灰
 	_text("烟丝", Vector2(330, 28), 14, C_DIM)
 	var n := maxi(s.tobacco, 1)
+	var tin_icon := _icon(1)
 	for i in n:
-		Art.tin(cv, Rect2(Vector2(364 + i * 22, 8), Vector2(24, 24)), 1.0 if i < s.tobacco else 0.25, false, t)
+		var ir := Rect2(Vector2(364 + i * 22, 8), Vector2(24, 24))
+		if tin_icon != null:
+			cv.draw_texture_rect(tin_icon, _fit_icon(tin_icon, ir), false, Color(1, 1, 1, 1.0 if i < s.tobacco else 0.25))
+		else:
+			Art.tin(cv, ir, 1.0 if i < s.tobacco else 0.25, false, t)
 	_text("×%d" % s.tobacco, Vector2(364 + n * 22 + 4, 28), 14, C_TEXT)
 	var ax := 364.0 + n * 22 + 44
 	_text("烟灰", Vector2(ax, 28), 14, C_DIM)
+	var ash_icon := _icon(2)
 	for i in mini(s.ash, 6):
-		Art.ellipse(cv, Vector2(ax + 42 + i * 12, 22), 5, 3, Color("#8a8680"))
+		if ash_icon != null:
+			cv.draw_texture_rect(ash_icon, _fit_icon(ash_icon, Rect2(Vector2(ax + 36 + i * 12, 12), Vector2(14, 14))), false)
+		else:
+			Art.ellipse(cv, Vector2(ax + 42 + i * 12, 22), 5, 3, Color("#8a8680"))
 	_text("×%d" % s.ash, Vector2(ax + 44 + mini(s.ash, 6) * 12, 28), 14, C_TEXT)
 	var now_n := 0
 	var now_amt := 0
@@ -607,6 +616,25 @@ func _draw_hud() -> void:
 		clue_txt += game.clue_name(c) + "  "
 	if clue_txt != "":
 		_text("证据：" + clue_txt, Vector2(612, 53), 12, C_DIM)
+
+
+## 顶栏小图标：Dify 工作流做的一组透明 PNG（assets/generated/hud_icons/hud_icons_<序号>.png：1 烟丝罐、2 烟灰）。
+## 没有就用代码画的
+var _icons := {}
+
+
+func _icon(i: int) -> Texture2D:
+	if not _icons.has(i):
+		var p := "res://assets/generated/hud_icons/hud_icons_%d.png" % i
+		_icons[i] = load(p) if ResourceLoader.exists(p) else null
+	return _icons[i]
+
+
+## 图标按比例塞进 r，居中
+func _fit_icon(tex: Texture2D, r: Rect2) -> Rect2:
+	var sz := tex.get_size()
+	var k := minf(r.size.x / sz.x, r.size.y / sz.y)
+	return Rect2(r.get_center() - sz * k / 2.0, sz * k)
 
 
 func _draw_message() -> void:

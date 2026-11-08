@@ -1239,6 +1239,7 @@ func _later(lt: Dictionary) -> Node3D:
 	if lt.kind == "planks" and lt.get("past", "door") == "door":
 		# 木板钉在原来那扇门上
 		_door_parts(n, ry, lt, true, true)
+	_body_from(n)
 	match lt.kind:
 		"brick":
 			# 新砌的砖：比原来的墙颜色新、砖缝白
@@ -1270,6 +1271,8 @@ func _later(lt: Dictionary) -> Node3D:
 				_part(n, _box(Vector3(0.08, WALL_H, 0.08)), _m(Color("#5a4026")), Vector3(sx, WALL_H / 2.0, 0).rotated(Vector3.UP, ry))
 		"lock":
 			_door_parts(n, ry, lt, true, true)
+	if lt.kind in ["brick", "planks"]:
+		_use_model(n, "later_" + lt.kind, false)
 	return n
 
 
@@ -1705,6 +1708,11 @@ func _body(n: Node3D) -> void:
 	n.set_meta("body", n.get_child_count())
 
 
+## 标记：从这里开始才是"身体"（前面的部件，比如木板下面那扇门，不换）
+func _body_from(n: Node3D) -> void:
+	n.set_meta("body_from", n.get_child_count())
+
+
 func model_scene(key: String) -> PackedScene:
 	if not _scenes.has(key):
 		var path := "%s/%s/%s.tscn" % [MODEL_DIR, key, key]
@@ -1717,10 +1725,11 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	if ps == null:
 		return
 	var cut: int = n.get_meta("body", n.get_child_count())
+	var start: int = n.get_meta("body_from", 0)
 	var box := AABB()
 	var first := true
 	var old: Array = []
-	for i in cut:
+	for i in range(start, cut):
 		var c := n.get_child(i)
 		old.append(c)
 		if c is MeshInstance3D and c.mesh != null:
@@ -1755,7 +1764,7 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	m.position = Vector3(box.get_center().x - mid.x, box.position.y - mb.position.y * sc, box.get_center().z - mid.z)
 	_retint(m, dim, ghost)
 	n.add_child(holder)
-	n.move_child(holder, 0)
+	n.move_child(holder, start)
 
 
 ## 模型（含旋转）在它自己父节点坐标里的包围盒，缩放前

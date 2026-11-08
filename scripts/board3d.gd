@@ -114,7 +114,8 @@ void fragment() {
 	vec3 em;
 	float nt;
 	float pst;
-	vec4 tc = texture(tex, UV);
+	// 贴图取模糊一点的那层：细碎的写实纹理变成大块的颜色，像手工上漆
+	vec4 tc = texture(tex, UV, 1.5);
 	ALBEDO = finish(albedo.rgb * tc.rgb, em, nt, pst);
 	nite = nt;
 	EMISSION = em + lamp.rgb * lamp_e * nt;
@@ -1701,6 +1702,7 @@ const FLAT_MODELS := ["paper", "glove", "book", "wax", "cache", "embers"]
 ## 模型可以比程序拼的高出多少
 const MODEL_TALL := 2.0
 
+const ModelTints := preload("res://scripts/model_tints.gd")
 var _scenes := {}  # 名字 -> PackedScene 或 null
 var _model_mats := {}  # 原材质 -> 换成两个时代光的材质
 
@@ -1769,7 +1771,7 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	m.scale = Vector3(sc, sy, sc)
 	var mid := mb.get_center() * Vector3(sc, sy, sc)
 	m.position = Vector3(box.get_center().x - mid.x, box.position.y - mb.position.y * sy, box.get_center().z - mid.z)
-	_retint(m, dim, ghost)
+	_retint(m, key, dim, ghost)
 	n.add_child(holder)
 	n.move_child(holder, start)
 
@@ -1794,7 +1796,8 @@ func _model_box(m: Node3D) -> AABB:
 
 
 ## 模型原来的材质换成游戏的着色：保留颜色贴图，光照按两个时代换（和程序拼的物件一样）
-func _retint(m: Node3D, dim: bool, ghost: Material) -> void:
+func _retint(m: Node3D, key: String, dim: bool, ghost: Material) -> void:
+	var tint: Color = ModelTints.TINTS.get(key, Color.WHITE)
 	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
 		if mi.mesh == null:
 			continue
@@ -1803,7 +1806,7 @@ func _retint(m: Node3D, dim: bool, ghost: Material) -> void:
 			continue
 		for i in mi.mesh.get_surface_count():
 			var src: Material = mi.get_active_material(i)
-			var k := [src, dim]
+			var k := [src, dim, tint]
 			if not _model_mats.has(k):
 				var col := Color.WHITE
 				var tex: Texture2D = null
@@ -1814,6 +1817,8 @@ func _retint(m: Node3D, dim: bool, ghost: Material) -> void:
 					tex = src.albedo_texture
 					rough = src.roughness
 					metal = src.metallic
+				# 校色：平均色拉回美术文档的配色（tools/model_tints.gd 算的）
+				col = Color(col.r * tint.r, col.g * tint.g, col.b * tint.b, col.a)
 				if dim:
 					col = col.darkened(0.5)
 				# 上漆的哑光模型：Tripo 的材质常常太亮太滑，压一压

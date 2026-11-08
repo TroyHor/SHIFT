@@ -16,7 +16,8 @@
 1. 在 Mac 的 Claude Code 里用 dify-godot-assets 的 `start_asset`（类型 `3D 静态模型`），brief 用下面的「共用风格」加上表里那一行。
 2. `deliver_to_godot` 交付到一个单独的文件夹（不要直接交付进这个仓库，原始模型一个 10–17 MB）。
 3. `tools/models/add.sh <交付文件夹> <名字>`：去掉法线和金属粗糙度贴图、颜色贴图缩到 512、网格简化到 6000 三角面以内，一个模型约 0.2 MB；写好 tscn 和来源记录。
-4. `godot --path . --rendering-driver opengl3 --script res://tools/model_sheet.gd -- 对照.png` 出对照图：程序拼的、模型白天、模型夜里三行并排。
+4. `godot --headless --path . --script res://tools/model_tints.gd`：算每个模型的校色系数，写进 `scripts/model_tints.gd`。模型的平均色会被拉回程序拼的那一份（也就是美术文档的配色），整套模型色调统一；贴图另外取模糊一层，细碎的写实纹理变成大块上漆的颜色。
+5. `godot --path . --rendering-driver opengl3 --script res://tools/model_sheet.gd -- 对照.png` 出对照图：程序拼的、模型白天、模型夜里三行并排。
 
 ## 共用风格（每个 brief 都加在前面）
 

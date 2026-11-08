@@ -1697,6 +1697,8 @@ const MODEL_DIR := "res://assets/generated"
 const DIM_WHEN_DONE := ["book", "paper", "glove"]
 ## 个别模型朝向不对时在这里转（弧度，绕竖轴）。没写的：正面朝 +Z（朝镜头），长条的东西自动转到和程序拼的同一个方向
 const MODEL_YAW := {"safe": -PI / 2, "wardrobe": -PI / 2, "chair": -PI / 2, "bed": -PI / 2, "barrel": -PI / 2, "cart": -PI / 2, "horse": 0.0, "snowman": -PI / 2, "toolbox": -PI / 2, "book": PI / 2, "person_detective": 0.0, "later_brick": PI / 2, "later_planks": PI / 2}
+## 按高度对齐、不按最长的一边的：张着手臂的雪人、做得比程序拼的高的烟丝罐；人物也都按高度，大家一样高
+const FIT_HEIGHT := ["snowman", "tin"]
 ## 做成立着的扁东西：先放倒（绕 x、z 轴的弧度）
 const MODEL_TILT := {"glove": Vector2(0.0, PI / 2)}
 ## 人物没写在上面的一律转这么多：Dify 工作流做的人物正面朝 +X
@@ -1771,6 +1773,8 @@ func _use_model(n: Node3D, key: String, dim: bool, ghost: Material = null) -> vo
 	# 最长的一边和程序拼的一样长；不出这一格，也不比程序拼的高太多
 	var sc := maxf(box.size.x, box.size.z) / maxf(mb.size.x, mb.size.z)
 	sc = minf(sc, minf(0.98 / mb.size.x, 0.98 / mb.size.z))
+	if key in FIT_HEIGHT or key.begins_with("person_"):
+		sc = minf(box.size.y / mb.size.y, minf(0.98 / mb.size.x, 0.98 / mb.size.z))
 	var sy := minf(sc, box.size.y * MODEL_TALL / mb.size.y)
 	if key not in FLAT_MODELS:
 		sc = sy

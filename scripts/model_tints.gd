@@ -13,6 +13,7 @@ const TINTS := {
 	"crates": Color(1.042, 1.006, 0.836),
 	"desk": Color(0.898, 0.901, 0.841),
 	"embers": Color(0.504, 0.495, 0.498),
+	"glove": Color(1.092, 1.434, 1.868),
 	"horse": Color(0.852, 0.908, 0.765),
 	"later_brick": Color(0.909, 1.237, 1.107),
 	"later_planks": Color(0.968, 1.055, 1.133),
